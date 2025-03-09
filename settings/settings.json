@@ -1,0 +1,4 @@
+{
+  "check": "HelloWorld!",
+  "tree_command": ["tree", "/", "-f", "-J", "--nolinks"]
+}
