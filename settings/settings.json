@@ -1,4 +1,12 @@
 {
   "check": "HelloWorld!",
-  "tree_command": ["tree", "/", "-f", "-J", "--nolinks"]
+  "sudo": true,
+  "prev_hallucination": false,
+  "tree_command": ["tree", "/", "-f", "-J", "--nolinks", "-o"],
+  "delete_tree_command": ["rm"],
+  "tree_file_path": "/home/m/PycharmProjects/terminAl/database/system_tree.json",
+  "chromadb_path": "/home/m/PycharmProjects/terminAl/database/vector_db",
+  "chromadb_tree_collection": "tree_collection",
+  "chromadb_docs_collection": "docs_collection",
+  "model_cache_directory": "/home/m/PycharmProjects/terminAl/model_cache"
 }

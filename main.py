@@ -1,13 +1,11 @@
-import asyncio
 import json
 import os
-import subprocess
 
 from dotenv import load_dotenv
-from icecream import ic
 
-from functions import *
 from functions.system_mapping import SystemMapping
+from functions.userfunctions import UserFunctions
+from settings.ascii_art import terminAl_ascii
 
 load_dotenv("./settings/.env")
 
@@ -21,10 +19,18 @@ class TerminAl:
         print(self.settings)
         print(self.env)
 
+    def run(self):
+        print(terminAl_ascii)
+        print("Willkommen bei terminAl!\nBeende die Anwendung mit \\exit")
+        while True:
+            user_input = input("terminAl --> : ")
+            UserFunctions.check_user_input(user_input)
+
+
 def main():
     """Main entry point for the application."""
     app = TerminAl()
-    app.check()
+    app.run()
 
 if __name__ == "__main__":
     main()
