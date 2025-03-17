@@ -1,0 +1,62 @@
+.
+├── database
+│   ├── system_tree.json
+│   └── vector_db
+│       ├── 1076de9e-54ed-44b8-89e9-23aa0d613879
+│       │   ├── data_level0.bin
+│       │   ├── header.bin
+│       │   ├── index_metadata.pickle
+│       │   ├── length.bin
+│       │   └── link_lists.bin
+│       └── chroma.sqlite3
+├── functions
+│   ├── chromadb_client.py
+│   ├── __pycache__
+│   │   ├── chromadb_client.cpython-312.pyc
+│   │   └── system_mapping.cpython-312.pyc
+│   └── system_mapping.py
+├── LICENSE
+├── main.py
+├── model_cache
+│   └── models--intfloat--multilingual-e5-large
+│       ├── blobs
+│       │   ├── 020afdebf2762b29fcaf286629a96c3b3b65af241f6a08226b1cfee60a21def6
+│       │   ├── 4eca68d85ecd3034cf4174d8a4033a75344ea62d
+│       │   ├── 62c24cdc13d4c9952d63718d6c9fa4c287974249e16b7ade6d5a85e7bbb75626
+│       │   ├── 63d473457c905564c8f818cff50a22e144b45f7b
+│       │   ├── 6de1940d16d38be9877bf7cc228c9377841b311f
+│       │   ├── ac2039abdf6ff023b27c919bb9675cfe378cb10f
+│       │   ├── c0b23a5bdab73fb2c6ee05d6f767f26a6039343b
+│       │   ├── cfc8146abe2a0488e9e2a0c56de7952f7c11ab059eca145a0a727afce0db2865
+│       │   ├── d5698132694f4f1bcff08fa7d937b1701812598e
+│       │   └── fc68c8c9ccbe4af4c95b6c9f8d4a3b8d6c790768
+│       ├── refs
+│       │   └── main
+│       └── snapshots
+│           └── 0dc5580a448e4284468b8909bae50fa925907bc5
+│               ├── 1_Pooling
+│               │   └── config.json -> ../../../blobs/63d473457c905564c8f818cff50a22e144b45f7b
+│               ├── config.json -> ../../blobs/fc68c8c9ccbe4af4c95b6c9f8d4a3b8d6c790768
+│               ├── model.safetensors -> ../../blobs/020afdebf2762b29fcaf286629a96c3b3b65af241f6a08226b1cfee60a21def6
+│               ├── modules.json -> ../../blobs/ac2039abdf6ff023b27c919bb9675cfe378cb10f
+│               ├── README.md -> ../../blobs/c0b23a5bdab73fb2c6ee05d6f767f26a6039343b
+│               ├── sentence_bert_config.json -> ../../blobs/4eca68d85ecd3034cf4174d8a4033a75344ea62d
+│               ├── sentencepiece.bpe.model -> ../../blobs/cfc8146abe2a0488e9e2a0c56de7952f7c11ab059eca145a0a727afce0db2865
+│               ├── special_tokens_map.json -> ../../blobs/d5698132694f4f1bcff08fa7d937b1701812598e
+│               ├── tokenizer_config.json -> ../../blobs/6de1940d16d38be9877bf7cc228c9377841b311f
+│               └── tokenizer.json -> ../../blobs/62c24cdc13d4c9952d63718d6c9fa4c287974249e16b7ade6d5a85e7bbb75626
+├── project_tree.txt
+├── README.md
+├── settings
+│   ├── example.env
+│   └── settings.json
+├── system_tree.json
+├── terminAl.sh
+└── tests
+    ├── root_dirs.json
+    ├── system_mapping.json
+    ├── system_tree.json
+    ├── test_os_mapping.ipynb
+    └── tree.py
+
+15 directories, 45 files

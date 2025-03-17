@@ -23,17 +23,10 @@ class SystemMapping:
                 if directory:
                     documents.append(str(directory))
                     ids.append(path)
-            ic()
-            ic(empty_dirs)
-        else:
-            ic()
-            print(f"Tree_data: {tree_data}")
-            ic(f"No data found for system mapping")
 
-        ic()
-        ic(len(documents))
-        ic(len(ids))
-        ic(documents[:2])
+        else:
+            #TODO Else Statement
+            pass
 
         ChromaDB.replace_data(collection=cls.settings.get("chromadb_tree_collection", "tree_collection"),
                               documents=documents,
@@ -44,8 +37,6 @@ class SystemMapping:
     def process_system_mapping(cls):
         confirmation = cls.map_system()
         if not confirmation:
-            ic()
-            ic("map_system() did not return a confirmation")
             return False
         with open(cls.settings.get("tree_file_path", "./database/system_tree.json"), 'r') as file:
             json_output = json.load(file)
@@ -54,8 +45,6 @@ class SystemMapping:
         root_dirs = base_tree.get('contents', None)
 
         if not root_dirs:
-            ic()
-            ic("Failed to map system")
             return {}
 
         directory_dict = {}
@@ -83,8 +72,6 @@ class SystemMapping:
         delete_tree_command = cls.settings.get("delete_tree_command", None)
 
         if any(var is None for var in [tree_command, tree_file_path, delete_tree_command]):
-            ic()
-            ic('Es gab einen Fehler beim Importieren eines der benötigten Parameter vom .env')
             return False
 
         tree_command.append(tree_file_path)
@@ -98,8 +85,6 @@ class SystemMapping:
                     text=True,
                     check=True
                 )
-                ic()
-                ic("Löschbefehl wurde erfolgreich ausgeführt")
 
                 try:
                     subprocess.run(
@@ -108,24 +93,14 @@ class SystemMapping:
                         text=True,
                         check=True
                     )
-                    ic()
-                    ic("Tree-Befehl wurde erfolgreich ausgeführt")
                     return True
 
                 except subprocess.CalledProcessError as e:
-                    ic()
-                    ic(f"Fehler beim Ausführen des Tree-Befehls: {e}")
-                    ic(f"Fehlerausgabe: {e.stderr}")
                     return False
                 except Exception as e:
-                    ic()
-                    ic(f"Unerwarteter Fehler im Tree-Befehl: {e}")
                     return False
 
             except subprocess.CalledProcessError as e:
-                ic()
-                ic(f"Fehler beim Ausführen des Löschbefehls: {e}")
-                ic(f"Fehlerausgabe: {e.stderr}")
 
                 try:
                     subprocess.run(
@@ -134,23 +109,14 @@ class SystemMapping:
                         text=True,
                         check=True
                     )
-                    ic()
-                    ic("Löschbefehl fehlgeschlagen, aber Tree-Befehl erfolgreich ausgeführt")
                     return True
 
                 except subprocess.CalledProcessError as e:
-                    ic()
-                    ic(f"Beide Befehle fehlgeschlagen. Tree-Befehl Fehler: {e}")
-                    ic(f"Fehlerausgabe: {e.stderr}")
                     return False
                 except Exception as e:
-                    ic()
-                    ic(f"Beide Befehle fehlgeschlagen. Unerwarteter Fehler im Tree-Befehl: {e}")
                     return False
 
             except Exception as e:
-                ic()
-                ic(f"Unerwarteter Fehler im Löschbefehl: {e}")
 
                 try:
                     subprocess.run(
@@ -159,16 +125,10 @@ class SystemMapping:
                         text=True,
                         check=True
                     )
-                    ic()
-                    ic("Löschbefehl fehlgeschlagen, aber Tree-Befehl erfolgreich ausgeführt")
                     return True
 
                 except Exception as e:
-                    ic()
-                    ic(f"Beide Befehle fehlgeschlagen. Endgültiger Fehler: {e}")
                     return False
 
         else:
-            ic()
-            ic('Es gab einen Fehler beim Importieren des "tree_command" vom .env')
             return None
