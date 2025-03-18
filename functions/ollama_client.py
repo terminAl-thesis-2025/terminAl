@@ -1,3 +1,4 @@
+import json
 import os
 import asyncio
 from ollama import AsyncClient
@@ -11,9 +12,11 @@ class OllamaClient:
 
     def __init__(self, host=None, model=None):
         """Initialize the Ollama client with configuration"""
+        self.settings = json.load(open("./settings/settings.json"))
         self.host = host or os.getenv("OLLAMA_HOST", "http://localhost:11434")
         self.model = model or os.getenv("OLLAMA_MODEL", "llama2")
         self.client = AsyncClient(host=self.host)
+        self.system_prompt = self.settings["system_prompt"]
 
     async def query(self, prompt, system_context=None, temperature=0.1):
         """
@@ -29,11 +32,11 @@ class OllamaClient:
         """
         try:
             # Prepare the message structure
-            messages = []
+            messages = [{"role": "system", "content": self.system_prompt}]
 
             # Add system message if provided
             if system_context:
-                messages.append({"role": "system", "content": system_context})
+                messages.append({"role": "system", "content": f"{system_context}"})
 
             # Add user message
             messages.append({"role": "user", "content": prompt})

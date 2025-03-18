@@ -5,6 +5,8 @@ import sys
 
 from dotenv import load_dotenv
 
+from functions import ollama_client
+from functions.ollama_client import OllamaClient
 from functions.userfunctions import UserFunctions
 from functions.async_chromadb_updater import AsyncChromaDBUpdater
 from settings.ascii_art import terminAl_ascii
@@ -17,6 +19,7 @@ class TerminAl:
         self.settings = json.load(open("./settings/settings.json"))
         self.env = os.getenv("ollama_key")
         self.chroma_updater = AsyncChromaDBUpdater()
+        self.ollama_client = OllamaClient()
 
     async def check(self):
         print(self.settings)
@@ -57,6 +60,8 @@ class TerminAl:
                                                                      "Keine Information verfügbar")
                     print(f"Auto Update Status:         {update_status}")
                     print(f"Letztes Update:             {latest_update}")
+                elif user_input.startswith(r"\cmd"):
+                    await UserFunctions.cmd(user_input)
                 elif user_input.startswith(r"\exit"):
                     await UserFunctions.exit()
                 elif user_input.startswith(r"\help"):
@@ -66,7 +71,10 @@ class TerminAl:
                 elif user_input.startswith("\\"):
                     print("Unbekannter Befehl. Zeige alle Befehle mit \help")
                 else:
-                    results = self.chroma_updater.retrieve(user_input)
+                    context = await self.chroma_updater.retrieve(user_input)
+                    result = await self.ollama_client.query(prompt=user_input, system_context=context)
+                    print(result)
+                    #TODO Geordnete Anzeige: zeige Command und Beschreibung
 
         except KeyboardInterrupt:
             print("\nBeenden der Anwendung...")
