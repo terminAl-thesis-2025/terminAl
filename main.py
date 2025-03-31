@@ -103,7 +103,7 @@ class TerminAl:
             user_input = await loop.run_in_executor(None, lambda: input("terminAl --> : "))
             return user_input
         except (EOFError, KeyboardInterrupt):
-            return "\exit"
+            return r"\exit"
 
 
 async def main():

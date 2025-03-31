@@ -60,4 +60,9 @@ class UserFunctions:
             print(f"Exception occurred: {str(e)}")
             return False
 
+    @classmethod
+    async def psql_login(cls):
+        #TODO set up
+        pass
+
 
