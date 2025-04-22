@@ -1,2 +1,2 @@
 # terminAl
-Bachelor's thesis PoC for terminal AI
+Bachelor's thesis PoC for Linux terminal AI-Assistant

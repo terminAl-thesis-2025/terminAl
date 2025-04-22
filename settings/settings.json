@@ -22,5 +22,11 @@
   "chroma_latest_update": "2025-03-17 16:51:48",
   "model_cache_directory": "/home/m/PycharmProjects/terminAl/model_cache",
   "current_collection_name": "temp_1742226048",
+  "tools": {
+    "postgres": {
+      "username": "postgres",
+      "databases": ["test"]
+    }
+  },
   "system_prompt": "Beantworte die Frage in einem json-ähnlichen format. Beispiel: {\"antwort\": \"<Deine Antwort>\", \"bemerkungen\": \"<Bemerkungen zu Deiner Antwort>\", \"befehl\": \"<Der CLI Befehl>\"}"
 }
