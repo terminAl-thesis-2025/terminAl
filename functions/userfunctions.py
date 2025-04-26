@@ -18,6 +18,7 @@ class UserFunctions:
         print("  \\help           - Zeigt diese Hilfe an")
         print("  \\info           - Zeigt Informationen zur Anwendung")
         print("  \\cmd <Befehl>   - Führt einen Shell-Befehl direkt aus")
+        print("  \\clear          - Leert den Bildschirm/Terminal")
         print("  \\update on      - Aktiviert automatische DB-Updates")
         print("  \\update off     - Deaktiviert automatische DB-Updates")
         print("  \\update now     - Führt sofort ein DB-Update durch")
@@ -64,5 +65,13 @@ class UserFunctions:
     async def psql_login(cls):
         #TODO set up
         pass
+
+    @classmethod
+    async def clear(cls):
+        subprocess.run(
+            ["clear"],
+            capture_output=False,
+            text=True
+        )
 
 
