@@ -5,10 +5,10 @@ import sys
 
 from dotenv import load_dotenv
 
-from functions import ollama_client
 from functions.ollama_client import OllamaClient
 from functions.userfunctions import UserFunctions
 from functions.async_chromadb_updater import AsyncChromaDBUpdater
+from functions.async_chromadb_retriever import AsyncChromaDBRetriever
 from settings.ascii_art import terminAl_ascii
 
 load_dotenv("./settings/.env")
@@ -20,6 +20,7 @@ class TerminAl:
         self.env = os.getenv("ollama_key")
         self.chroma_updater = AsyncChromaDBUpdater()
         self.ollama_client = OllamaClient()
+        self.chroma_retriever = AsyncChromaDBRetriever()
 
     async def check(self):
         print(self.settings)
@@ -55,8 +56,8 @@ class TerminAl:
                         await manual_update_task
                         print("Update abgeschlossen.")
                 elif user_input.startswith(r"\update status"):
-                    update_status = self.chroma_updater.settings.get("chroma_auto_update", "Status nicht verfügbar")
-                    latest_update = self.chroma_updater.settings.get("chroma_latest_update",
+                    update_status = self.chroma_updater.chroma_settings.get("chroma_auto_update", "Status nicht verfügbar")
+                    latest_update = self.chroma_updater.chroma_settings.get("chroma_latest_update",
                                                                      "Keine Information verfügbar")
                     print(f"Auto Update Status:         {update_status}")
                     print(f"Letztes Update:             {latest_update}")
@@ -68,10 +69,17 @@ class TerminAl:
                     await UserFunctions.help()
                 elif user_input.startswith(r"\info"):
                     await UserFunctions.info()
+                elif user_input.startswith(r"\search"):
+                    user_input = user_input.split(" ")
+                    seach_results = await self.chroma_retriever.fulltext_search(user_input[1:], top_k=2)
+                    print(seach_results)
+                elif user_input.startswith(r"\chromadb_collections"):
+                    self.chroma_updater.list_collections()
                 elif user_input.startswith("\\"):
-                    print("Unbekannter Befehl. Zeige alle Befehle mit \help")
+                    print("Unbekannter Befehl. Zeige alle Befehle mit \\help")
                 else:
-                    context = await self.chroma_updater.retrieve(user_input)
+                    context = await self.chroma_retriever.retrieve(user_input, top_k=2)
+                    print(context)
                     result = await self.ollama_client.query(prompt=user_input, system_context=context)
                     print(result)
                     #TODO Geordnete Anzeige: zeige Command und Beschreibung

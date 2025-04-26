@@ -1,84 +1,79 @@
 import json
 import subprocess
-
 from icecream import ic
-
-from functions.chromadb_client import ChromaDB
 
 
 class SystemMapping:
     settings = json.load(open("./settings/settings.json"))
 
     @classmethod
-    def import_os_to_vdb(cls):
-        tree_data = cls.process_system_mapping()
-        documents = []
-        ids = []
+    def map_all(cls):
+        psql_results = cls.map_postgres()
+        os_results = cls.map_os()
 
-        if tree_data:
-            empty_dirs = 0
-            for path, directory in tree_data.items():
-                if not directory:
-                    empty_dirs += 1
-                if directory:
-                    documents.append(str(directory))
-                    ids.append(path)
-
-        else:
-            #TODO Else Statement
-            pass
-
-        ChromaDB.replace_data(collection=cls.settings.get("chromadb_tree_collection", "tree_collection"),
-                              documents=documents,
-                              ids=ids)
-        return True
+        return os_results, psql_results
 
     @classmethod
-    def process_system_mapping(cls):
-        confirmation = cls.map_system()
-        if not confirmation:
-            return False
-        with open(cls.settings.get("tree_file_path", "./database/system_tree.json"), 'r') as file:
-            json_output = json.load(file)
+    def map_postgres(cls):
+        postgres_settings = cls.settings.get("tools", "").get("postgres", "")
+        username = postgres_settings.get("username", "")
+        databases = postgres_settings.get("databases", [])  # list of Databses
+        mapping_tables_command = postgres_settings.get("mapping_tables_command", [])  # list of command parts
 
-        base_tree, report = json_output
-        root_dirs = base_tree.get('contents', None)
+        table_results = []
 
-        if not root_dirs:
-            return {}
+        mapping_tables_command[2] = username
 
-        directory_dict = {}
-        empty_directories = 0
-        directories = []
 
-        for root_dir in root_dirs:
-            if root_dir["type"] == "directory":
-                directories.append(root_dir["name"])
-            if root_dir["type"] == "directory" and root_dir.get("contents", False):
-                directory_dict[root_dir["name"]] = [item["name"] for item in root_dir["contents"] if
-                                                    item["type"] == "file"]
-                root_dirs.extend([item for item in root_dir["contents"] if item["type"] == "directory"])
+        if databases and mapping_tables_command and username:
+            for database in databases:
+                mapping_tables_command[5] = database
 
-            elif root_dir["type"] == "directory" and not root_dir.get("contents", False):
-                directory_dict[root_dir["name"]] = []
-                empty_directories += 1
+                try:
+                    # Store the result of subprocess.run()
+                    result = subprocess.run(
+                        mapping_tables_command,
+                        capture_output=True,
+                        text=True,
+                        check=True
+                    )
 
-        return directory_dict
+                    # Append both database name and command output to psql_results
+                    table_results.append({
+                        "database": database,
+                        "tables_table": result.stdout
+                    })
+
+                except subprocess.CalledProcessError as e:
+                    ic(e)
+                    ic(f"stdout: {e.stdout}")
+                    ic(f"stderr: {e.stderr}")
+                    return []
+                except Exception as e:
+                    ic()
+                    ic(e)
+                    return []
+
+        return table_results
 
     @classmethod
-    def map_system(cls):
-        tree_command = cls.settings.get("tree_command", None)
-        tree_file_path = cls.settings.get("tree_file_path", "./database/system_tree.json")
-        delete_tree_command = cls.settings.get("delete_tree_command", None)
+    def map_os(cls):
+        os_mapping_vars = cls.settings.get("os_mapping")
+        tree_command = os_mapping_vars.get("tree_command", None)
+        tree_file_path = os_mapping_vars.get("tree_file_path", "./database/system_tree.json")
+        delete_tree_command = os_mapping_vars.get("delete_tree_command", None)
 
         if any(var is None for var in [tree_command, tree_file_path, delete_tree_command]):
-            return False
+            ic()
+            ic("Fucking Issues!!!")
+            return {}
 
         tree_command.append(tree_file_path)
         delete_tree_command.append(tree_file_path)
 
         if tree_command:
             try:
+                # Try to delete existing tree file
                 subprocess.run(
                     delete_tree_command,
                     capture_output=True,
@@ -87,21 +82,28 @@ class SystemMapping:
                 )
 
                 try:
+                    # Generate new tree file
                     subprocess.run(
                         tree_command,
                         capture_output=True,
                         text=True,
                         check=True
                     )
-                    return True
+                    # Process the generated tree file
+                    return cls.process_os_mapping(tree_file_path)
 
                 except subprocess.CalledProcessError as e:
-                    return False
+                    ic(e)
+                    ic(f"stdout: {e.stdout}")
+                    ic(f"stderr: {e.stderr}")
+                    return {}
                 except Exception as e:
-                    return False
+                    ic(e)
+                    ic(f"error: {e}")
+                    return {}
 
             except subprocess.CalledProcessError as e:
-
+                # If deletion fails, try to generate anyway
                 try:
                     subprocess.run(
                         tree_command,
@@ -109,15 +111,21 @@ class SystemMapping:
                         text=True,
                         check=True
                     )
-                    return True
+                    # Process the generated tree file
+                    return cls.process_os_mapping(tree_file_path)
 
                 except subprocess.CalledProcessError as e:
-                    return False
+                    ic(e)
+                    ic(f"stdout: {e.stdout}")
+                    ic(f"stderr: {e.stderr}")
+                    return {}
                 except Exception as e:
-                    return False
+                    ic(e)
+                    ic(f"error: {e}")
+                    return {}
 
             except Exception as e:
-
+                # If another exception occurs during deletion, try to generate anyway
                 try:
                     subprocess.run(
                         tree_command,
@@ -125,10 +133,55 @@ class SystemMapping:
                         text=True,
                         check=True
                     )
-                    return True
+                    # Process the generated tree file
+                    return cls.process_os_mapping(tree_file_path)
 
                 except Exception as e:
-                    return False
+                    ic(e)
+                    ic(f"error: {e}")
+                    return {}
 
         else:
-            return None
+            ic()
+            ic("Fucking Else!#############################")
+            return {}
+
+    @classmethod
+    def process_os_mapping(cls, tree_file_path=None):
+        if tree_file_path is None:
+            tree_file_path = cls.settings.get("tree_file_path", "./database/system_tree.json")
+
+        try:
+            with open(tree_file_path, 'r') as file:
+                json_output = json.load(file)
+
+            base_tree, report = json_output
+            root_dirs = base_tree.get('contents', None)
+
+            if not root_dirs:
+                ic()
+                ic(f"Empty root directory list: {root_dirs}")
+                return {}
+
+            directory_dict = {}
+            empty_directories = 0
+            directories = []
+
+            for root_dir in root_dirs:
+                if root_dir["type"] == "directory":
+                    directories.append(root_dir["name"])
+                if root_dir["type"] == "directory" and root_dir.get("contents", False):
+                    directory_dict[root_dir["name"]] = [item["name"] for item in root_dir["contents"] if
+                                                        item["type"] == "file"]
+                    root_dirs.extend([item for item in root_dir["contents"] if item["type"] == "directory"])
+
+                elif root_dir["type"] == "directory" and not root_dir.get("contents", False):
+                    directory_dict[root_dir["name"]] = []
+                    empty_directories += 1
+
+            return directory_dict
+
+        except Exception as e:
+            ic(e)
+            ic(f"error: {e}")
+            return {}

@@ -13,8 +13,9 @@ class OllamaClient:
     def __init__(self, host=None, model=None):
         """Initialize the Ollama client with configuration"""
         self.settings = json.load(open("./settings/settings.json"))
-        self.host = host or os.getenv("OLLAMA_HOST", "http://localhost:11434")
-        self.model = model or os.getenv("OLLAMA_MODEL", "llama2")
+        self.ollama_settings = self.settings.get("ollama_settings", {})
+        self.host = self.ollama_settings.get("ollama_url", "http://localhost:11434")
+        self.model = self.ollama_settings.get("ollama_model", "llama3.2:3b-instruct-q4_K_M")
         self.client = AsyncClient(host=self.host)
         self.system_prompt = self.settings["system_prompt"]
 

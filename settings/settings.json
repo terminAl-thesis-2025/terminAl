@@ -2,31 +2,60 @@
   "check": "HelloWorld!",
   "sudo": true,
   "prev_hallucination": false,
-  "tree_command": [
-    "tree",
-    "/",
-    "-f",
-    "-J",
-    "--nolinks",
-    "-o"
-  ],
-  "delete_tree_command": [
-    "rm"
-  ],
-  "tree_file_path": "/home/m/PycharmProjects/terminAl/database/system_tree.json",
-  "chromadb_path": "/home/m/PycharmProjects/terminAl/database/vector_db",
-  "chromadb_tree_collection": "tree_collection",
-  "chromadb_docs_collection": "docs_collection",
-  "chroma_update_interval": 600,
-  "chroma_auto_update": false,
-  "chroma_latest_update": "2025-03-17 16:51:48",
-  "model_cache_directory": "/home/m/PycharmProjects/terminAl/model_cache",
-  "current_collection_name": "temp_1742226048",
+  "os_mapping": {
+    "tree_command": [
+      "tree",
+      "/",
+      "-f",
+      "-J",
+      "--nolinks",
+      "-o"
+    ],
+    "delete_tree_command": [
+      "rm"
+    ],
+    "tree_file_path": "/home/m/PycharmProjects/terminAl/database/system_tree.json"
+  },
+  "ollama_settings": {
+    "ollama_url": "http://localhost:11434",
+    "ollama_model": "llama3.2:3b-instruct-q4_K_M"
+  },
+  "chroma_settings": {
+    "chromadb_path": "/home/m/PycharmProjects/terminAl/database/vector_db",
+    "chromadb_tree_collection": "tree_collection",
+    "chromadb_docs_collection": "docs_collection",
+    "chroma_update_interval": 600,
+    "chroma_auto_update": false,
+    "chroma_latest_update": "2025-04-24 13:52:46",
+    "current_collection_name": "temp_1745495269"
+  },
   "tools": {
     "postgres": {
       "username": "postgres",
-      "databases": ["test"]
+      "databases": [
+        "test"
+      ],
+      "mapping_tables_command2": [
+        "psql",
+        "-U",
+        "<username>",
+        "-d",
+        "<database>",
+        "-c",
+        "\\dt"
+      ],
+      "mapping_tables_command": [
+        "sudo",
+        "-u",
+        "postgres",
+        "psql",
+        "-d",
+        "<database>",
+        "-c",
+        "\\dt"
+      ]
     }
   },
-  "system_prompt": "Beantworte die Frage in einem json-ähnlichen format. Beispiel: {\"antwort\": \"<Deine Antwort>\", \"bemerkungen\": \"<Bemerkungen zu Deiner Antwort>\", \"befehl\": \"<Der CLI Befehl>\"}"
+  "system_prompt": "Beantworte die Frage in einem json-\u00e4hnlichen format. Beispiel: {\"antwort\": \"<Deine Antwort>\", \"bemerkungen\": \"<Bemerkungen zu Deiner Antwort>\", \"befehl\": \"<Der CLI Befehl>\"}",
+  "model_cache_directory": "/home/m/PycharmProjects/terminAl/model_cache"
 }
