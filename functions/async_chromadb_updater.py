@@ -156,29 +156,50 @@ class AsyncChromaDBUpdater:
             retrieved_coll = self.client.get_collection(collection)
             print(f"Collection: {retrieved_coll.name} --> {retrieved_coll.id}")
 
-    def _clean_up(self, uuids_to_remove):
-        collections = self.client.list_collections()
+    def _clean_up(self):
+        """
+        Bereinigt den ChromaDB-Speicher, indem alle UUID-Ordner gelöscht werden,
+        die nicht zu "Main_Collection" oder "collection_metadata" gehören.
+        """
+        if not os.path.exists(self.chromadb_path):
+            print(f"Pfad {self.chromadb_path} existiert nicht. Cleanup übersprungen.")
+            return
 
-        for col in collections:
-            if col.startswith("temp_"):
-                # Get full metadata
-                collection = self.client.get_collection(name=col)
+        # 1. Alle Ordner und Dateien im chromadb_path listen
+        all_entries = os.listdir(self.chromadb_path)
+        all_uuid_folders = [entry for entry in all_entries
+                            if os.path.isdir(os.path.join(self.chromadb_path, entry))]
 
-                # Delete via API
-                self.client.delete_collection(collection.name)
+        # 2. Aktive Collection-IDs sammeln
+        active_collections = self.client.list_collections()
+        active_uuids = set()
 
-                # Delete via shutil
-                uuids_to_remove.append(collection.id)
+        for collection in active_collections:
+            if collection.name in ["Main_Collection", "collection_metadata"]:
+                active_uuids.add(str(collection.id))
 
-        for uuid in uuids_to_remove:
-            # Delete HNSW index folder
-            uuid_folder = os.path.join(self.chromadb_path, str(uuid))
-            if os.path.exists(uuid_folder):
-                shutil.rmtree(uuid_folder)
+        # 3. Verwaiste Ordner finden
+        orphans = [uuid for uuid in all_uuid_folders if uuid not in active_uuids]
 
-        # Vacuum the database
-        conn = sqlite3.connect(os.path.join(self.chromadb_path, "chroma.sqlite3"))
-        conn.execute("VACUUM;")
-        conn.close()
+        # 4. Löschen der verwaisten Ordner
+        for orphan in orphans:
+            orphan_path = os.path.join(self.chromadb_path, orphan)
+            try:
+                shutil.rmtree(orphan_path)
+                print(f"Gelöscht: {orphan_path}")
+            except Exception as e:
+                print(f"Fehler beim Löschen von {orphan_path}: {e}")
+
+        # 5. VACUUM auf der SQLite-Datenbank
+        db_path = os.path.join(self.chromadb_path, "chroma.sqlite3")
+        if os.path.exists(db_path):
+            try:
+                conn = sqlite3.connect(db_path)
+                conn.execute("VACUUM;")
+                conn.close()
+                print("VACUUM auf chroma.sqlite3 erfolgreich abgeschlossen.")
+            except Exception as e:
+                print(f"Fehler beim VACUUM der Datenbank: {e}")
+
 
 

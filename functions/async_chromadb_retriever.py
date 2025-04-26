@@ -47,13 +47,29 @@ class AsyncChromaDBRetriever:
             # Query the collection
             results = self.collection.query(
                 query_texts=[user_input],
-                n_results=top_k  # Adjust as needed
+                n_results=top_k,
+                include=["distances"]  # <--- ADD THIS
             )
 
-            # Format results into a text block
-            formatted_context = self._format_context(results)
+            if not results or not results.get("documents") or not results.get("distances") or not results.get("ids"):
+                return "Keine relevanten Informationen gefunden."
 
-            return formatted_context
+            filtered_docs = []
+            for doc_list, id_list, dist_list in zip(results["documents"], results["ids"], results["distances"]):
+                for doc, id_, dist in zip(doc_list, id_list, dist_list):
+                    if dist < 0.2:  # <-- set your threshold here
+                        filtered_docs.append((id_, doc))
+
+            if not filtered_docs:
+                return "Keine relevanten Informationen gefunden."
+
+            # Format the context from filtered docs
+            formatted_context = ""
+            for id_, doc in filtered_docs:
+                formatted_context += f"ID: {id_}\nInhalt: {doc}\n\n"
+
+            return formatted_context if formatted_context else "Keine relevanten Informationen gefunden."
+
 
         except Exception as e:
             return f"Fehler bei der Abfrage der ChromaDB: {str(e)}"

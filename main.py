@@ -9,6 +9,7 @@ from functions.ollama_client import OllamaClient
 from functions.userfunctions import UserFunctions
 from functions.async_chromadb_updater import AsyncChromaDBUpdater
 from functions.async_chromadb_retriever import AsyncChromaDBRetriever
+from functions.async_environment_retriever import environment_retriever
 from settings.ascii_art import terminAl_ascii
 
 load_dotenv("./settings/.env")
@@ -27,6 +28,8 @@ class TerminAl:
         print(self.env)
 
     async def run(self):
+        await UserFunctions.clear()
+
         print(terminAl_ascii)
         print("Willkommen bei terminAl!\nZeige Benutzerhandbuch mit: \\help")
 
@@ -73,14 +76,30 @@ class TerminAl:
                     user_input = user_input.split(" ")
                     seach_results = await self.chroma_retriever.fulltext_search(user_input[1:], top_k=2)
                     print(seach_results)
+                elif user_input.startswith(r"\clear"):
+                    await UserFunctions.clear()
                 elif user_input.startswith(r"\chromadb_collections"):
                     self.chroma_updater.list_collections()
                 elif user_input.startswith("\\"):
                     print("Unbekannter Befehl. Zeige alle Befehle mit \\help")
                 else:
-                    context = await self.chroma_retriever.retrieve(user_input, top_k=2)
-                    print(context)
-                    result = await self.ollama_client.query(prompt=user_input, system_context=context)
+                    vector_context, environment_context = await asyncio.gather(
+                        self.chroma_retriever.retrieve(user_input, top_k=2),
+                        environment_retriever()
+                    )
+
+                    # Starte mit wichtigem Kontext (Umgebungskontext)
+                    combined_context = (
+                        "### BEGINN AKTUELLE UMGEBUNGSINFORMATIONEN\n"
+                        f"{json.dumps(environment_context, indent=2, ensure_ascii=False)}\n"
+                        "### ENDE AKTUELLE UMGEBUNGSINFORMATIONEN\n\n"
+                        "### BEGINN SYSTEM-WISSENSDATENBANK (aus lokaler ChromaDB abgerufen)\n"
+                        f"{vector_context}\n"
+                        "### ENDE SYSTEM-WISSENSDATENBANK\n"
+                    )
+
+                    print(combined_context)
+                    result = await self.ollama_client.query(prompt=user_input, system_context=combined_context)
                     print(result)
                     #TODO Geordnete Anzeige: zeige Command und Beschreibung
 
