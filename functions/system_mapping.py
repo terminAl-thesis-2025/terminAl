@@ -1,10 +1,13 @@
-import json
-import subprocess
+import json, os, subprocess
 from icecream import ic
+from collections import deque
+from dotenv import load_dotenv
 
+load_dotenv("./settings/.env")
+terminal_path = os.getenv("TERMINAL_PATH")
 
 class SystemMapping:
-    settings = json.load(open("./settings/settings.json"))
+    settings = json.load(open(terminal_path + "settings/settings.json"))
 
     @classmethod
     def map_all(cls):
@@ -179,9 +182,41 @@ class SystemMapping:
                     directory_dict[root_dir["name"]] = []
                     empty_directories += 1
 
+            # Remove Big Items for now. Split up later on.
+            for path, content in directory_dict.items():
+                if len(content) > 2000:
+                    del directory_dict[path]
+
             return directory_dict
 
         except Exception as e:
             ic(e)
             ic(f"error: {e}")
             return {}
+
+    def fast_process_os_mapping(self, tree_file_path):
+        data, _ = json.loads(open(tree_file_path, 'rb').read())
+        queue = deque(data.get("contents", []))
+        directory_dict = {}
+
+        while queue:
+            node = queue.popleft()
+            if node["type"] != "directory":
+                continue
+
+            # collect file names in this directory
+            files = [c["name"] for c in node.get("contents", [])
+                     if c["type"] == "file"]
+            directory_dict[node["name"]] = files
+
+            # enqueue subdirectories
+            for c in node.get("contents", []):
+                if c["type"] == "directory":
+                    queue.append(c)
+
+        # Remove Big Items for now. Split up later on.
+        for path, content in directory_dict.items():
+            if len(content) > 2000:
+                del directory_dict[path]
+
+        return directory_dict

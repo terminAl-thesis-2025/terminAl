@@ -1,12 +1,5 @@
-import asyncio
-import json
-import os
-import time
-import threading
+import asyncio, datetime, json, os, shutil, time
 import sqlite3
-import shutil
-
-import datetime
 
 import chromadb
 from tqdm import tqdm as tqdm_func
@@ -17,6 +10,10 @@ from icecream import ic
 
 from functions.system_mapping import SystemMapping
 # from functions.chromadb_client import ChromaDB
+from dotenv import load_dotenv
+
+load_dotenv("./settings/.env")
+terminal_path = os.getenv("TERMINAL_PATH")
 
 
 class AsyncChromaDBUpdater:
@@ -26,8 +23,8 @@ class AsyncChromaDBUpdater:
     Koordiniert mit den bestehenden SystemMapping und ChromaDB Klassen.
     """
 
-    def __init__(self, settings_path="./settings/settings.json"):
-        self.settings = json.load(open(settings_path))
+    def __init__(self):
+        self.settings = json.load(open(terminal_path + "settings/settings.json"))
         self.chroma_settings = self.settings.get("chroma_settings", {})
         self.update_interval = self.chroma_settings.get("chroma_update_interval", 600)  # Standard: 10 Minuten
         self.auto_update = self.chroma_settings.get("chroma_auto_update", False)  # Standard: Automatisches Update aktiviert
@@ -70,24 +67,24 @@ class AsyncChromaDBUpdater:
 
             os_results, psql_results = SystemMapping().map_all()
             temp_coll_name = f"temp_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
-            uuids_to_remove = []
             batch_size = 5000 # Small batch size to prevent RAM and VRAM overload
             psql_result_len = len(psql_results)
 
-            # Get current Main_Collection ID to Delete HNSW later on
-            try:
-                main_collection = self.client.get_collection("Main_Collection")
-                uuids_to_remove.append(main_collection.id)
-            except Exception as e:
-                self.client.create_collection(temp_coll_name)
-                main_collection = self.client.create_collection("Main_Collection")
-                uuids_to_remove.append(main_collection.id)
+            # Track UUIDs to keep
+            uuids_to_keep = set()
 
-            # TODO Remove
-            self._clean_up(uuids_to_remove)
-
+            # Create temporary collection and track its UUID
             temp_collection = self.client.create_collection(temp_coll_name)
-    
+            uuids_to_keep.add(str(temp_collection.id))
+
+            # Add collection_metadata UUID to keep list
+            try:
+                metadata_collection = self.client.get_collection("collection_metadata")
+                uuids_to_keep.add(str(metadata_collection.id))
+            except Exception:
+                # collection_metadata might not exist yet
+                pass
+
             temp_collection.add(
                 documents=[str(psql_result) for psql_result in psql_results],
                 metadatas=[{"tool": "sql"} for i in range(len(psql_results))],
@@ -112,18 +109,90 @@ class AsyncChromaDBUpdater:
                     metadatas=meta_chunk,
                     ids=id_chunk
                 )
-    
-            self.client.delete_collection("Main_Collection")
-            temp_collection.modify(name="Main_Collection")
-            self._clean_up(uuids_to_remove)
+
+            ic()
+            ic(f"Temp Collection before Deleting Main Collection: {temp_collection.name, temp_collection.id}")
+            ic(f"UUIDs to keep: {uuids_to_keep}")
+
+            # Delete Main_Collection if it exists
+            try:
+                main_collection = self.client.get_collection("Main_Collection")
+                ic(f"Main Collection before Deleting Main Collection: {main_collection.name, main_collection.id}")
+                self.client.delete_collection("Main_Collection")
+            except Exception as e:
+                ic()
+                ic(e)
+
+            try:
+                check_main_coll2 = self.client.get_collection("Main_Collection")
+            except Exception as e:
+                ic()
+                ic(e)
+            try:
+                check_temp_coll2 = self.client.get_collection(temp_coll_name)
+            except Exception as e:
+                ic()
+                ic(e)
+
+            ic()
+            try:
+                ic(f"Main Collection after Deleting Main Collection: {check_main_coll2.name, check_main_coll2.id}")
+            except Exception as e:
+                ic()
+                ic(e)
+
+            try:
+                ic(f"Temp Collection after Deleting Main Collection: {check_temp_coll2.name, check_temp_coll2.id}")
+            except Exception as e:
+                ic()
+                ic(e)
+
+            # Rename temp collection to Main_Collection
+            temp_collection_to_update = self.client.get_collection(temp_coll_name)
+            temp_collection_to_update.modify(name="Main_Collection")
+
+            try:
+                check_main_coll1 = self.client.get_collection("Main_Collection")
+            except Exception as e:
+                ic()
+                ic(e)
+            try:
+                check_temp_coll1 = self.client.get_collection(temp_coll_name)
+            except Exception as e:
+                ic()
+                ic(e)
+
+            ic()
+            try:
+                ic(f"Temp Collection after renaming Temp Collection: {check_temp_coll1.name, check_temp_coll1.id}")
+            except Exception as e:
+                ic()
+                ic(e)
+
+            try:
+                ic(f"Main Collection after renaming Temp Collection: {check_main_coll1.name, check_main_coll1.id}")
+            except Exception as e:
+                ic()
+                ic(e)
+
+            # TODO Remove
+            # Add collection_metadata UUID to keep list
+            try:
+                metadata_collection = self.client.get_collection("collection_metadata")
+                uuids_to_keep.add(str(metadata_collection.id))
+            except Exception:
+                # collection_metadata might not exist yet
+                pass
+
+            # Do cleanup with our uuids_to_keep list
+            self._clean_up(uuids_to_keep)
 
             self._update_update_time()
-
             self.is_updating = False
 
             end_time = time.time()
             time_elapsed = end_time - start_time
-            print(f"Time taken for updating ChromaDB: {time_elapsed} seconds")
+            print(f"Time taken for updating ChromaDB: {time_elapsed/60} minutes")
 
     async def auto_update_on(self):
         self.auto_update = True
@@ -140,7 +209,9 @@ class AsyncChromaDBUpdater:
             json.dump(self.settings, file, indent=2)
 
     def _update_update_time(self):
-        self.chroma_latest_update = datetime.datetime.now().isoformat()
+        now = datetime.datetime.now()
+        formatted_now = now.strftime("%d.%m.%Y %H:%M:%S")
+        self.chroma_latest_update = formatted_now
         self.settings["chroma_settings"]["chroma_latest_update"] = self.chroma_latest_update
         # Save the updated settings file
         with open("./settings/settings.json", "w", encoding="utf-8") as file:
@@ -151,46 +222,83 @@ class AsyncChromaDBUpdater:
             yield iterable[i:i + size]
 
     def list_collections(self):
+        # List collections using ChromaDB client
+        print("\n=== Collections via ChromaDB Client ===")
         collections = self.client.list_collections()
         for collection in collections:
             retrieved_coll = self.client.get_collection(collection)
             print(f"Collection: {retrieved_coll.name} --> {retrieved_coll.id}")
 
-    def _clean_up(self):
+        # Now also directly read from the database
+        db_path = os.path.join(self.chromadb_path, "chroma.sqlite3")
+
+        if not os.path.exists(db_path):
+            print("\nSQLite database not found.")
+            return
+
+        print("\n=== Collections via SQLite Database ===")
+        try:
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            cursor.execute("SELECT name, uuid FROM collections;")
+            rows = cursor.fetchall()
+
+            for row in rows:
+                name, uuid = row
+                print(f"DB Collection: {name} --> {uuid}")
+
+            cursor.close()
+            conn.close()
+        except Exception as e:
+            print(f"Error reading database: {e}")
+
+    def _clean_up(self, uuids_to_keep=None):
         """
-        Bereinigt den ChromaDB-Speicher, indem alle UUID-Ordner gelöscht werden,
-        die nicht zu "Main_Collection" oder "collection_metadata" gehören.
+        Bereinigt den ChromaDB-Speicher:
+        - Behalte maximal die 15 neuesten Ordner (basierend auf Änderungszeit).
+        - Löscht alle älteren Ordner.
+        - Führt VACUUM auf der chroma.sqlite3-Datenbank durch.
         """
         if not os.path.exists(self.chromadb_path):
             print(f"Pfad {self.chromadb_path} existiert nicht. Cleanup übersprungen.")
             return
 
-        # 1. Alle Ordner und Dateien im chromadb_path listen
         all_entries = os.listdir(self.chromadb_path)
-        all_uuid_folders = [entry for entry in all_entries
-                            if os.path.isdir(os.path.join(self.chromadb_path, entry))]
+        print(f"All entries: {all_entries}")
 
-        # 2. Aktive Collection-IDs sammeln
-        active_collections = self.client.list_collections()
-        active_uuids = set()
+        # Nur echte Ordner (keine Dateien) auflisten
+        all_folders = [
+            entry for entry in all_entries
+            if os.path.isdir(os.path.join(self.chromadb_path, entry))
+        ]
+        print(f"Detected folders: {all_folders}")
 
-        for collection in active_collections:
-            if collection.name in ["Main_Collection", "collection_metadata"]:
-                active_uuids.add(str(collection.id))
+        folder_paths = [os.path.join(self.chromadb_path, folder) for folder in all_folders]
 
-        # 3. Verwaiste Ordner finden
-        orphans = [uuid for uuid in all_uuid_folders if uuid not in active_uuids]
+        # Änderungszeit für alle Ordner holen
+        folder_paths_with_mtime = [
+            (path, os.path.getmtime(path)) for path in folder_paths
+        ]
 
-        # 4. Löschen der verwaisten Ordner
-        for orphan in orphans:
-            orphan_path = os.path.join(self.chromadb_path, orphan)
+        # Sortieren nach Änderungszeit (neueste zuerst)
+        folder_paths_with_mtime.sort(key=lambda x: x[1], reverse=True)
+
+        # Ordner aufteilen: neueste 15 behalten, Rest löschen
+        folders_to_keep = folder_paths_with_mtime[:15]
+        folders_to_delete = folder_paths_with_mtime[15:]
+
+        # Löschen der alten Ordner
+        for path, mtime in folders_to_delete:
             try:
-                shutil.rmtree(orphan_path)
-                print(f"Gelöscht: {orphan_path}")
+                shutil.rmtree(path)
+                print(f"Gelöscht (älter als Top-15): {path} (Letzte Änderung: {time.ctime(mtime)})")
             except Exception as e:
-                print(f"Fehler beim Löschen von {orphan_path}: {e}")
+                print(f"Fehler beim Löschen von {path}: {e}")
 
-        # 5. VACUUM auf der SQLite-Datenbank
+        if not folders_to_delete:
+            print("Weniger als 15 Ordner vorhanden oder keine alten Ordner zum Löschen.")
+
+        # VACUUM auf der SQLite-Datenbank
         db_path = os.path.join(self.chromadb_path, "chroma.sqlite3")
         if os.path.exists(db_path):
             try:
@@ -200,6 +308,3 @@ class AsyncChromaDBUpdater:
                 print("VACUUM auf chroma.sqlite3 erfolgreich abgeschlossen.")
             except Exception as e:
                 print(f"Fehler beim VACUUM der Datenbank: {e}")
-
-
-

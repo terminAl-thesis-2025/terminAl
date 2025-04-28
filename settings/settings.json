@@ -26,8 +26,9 @@
     "chromadb_docs_collection": "docs_collection",
     "chroma_update_interval": 600,
     "chroma_auto_update": false,
-    "chroma_latest_update": "2025-04-24 13:52:46",
-    "current_collection_name": "temp_1745495269"
+    "chroma_latest_update": "27.04.2025 21:03:24",
+    "current_collection_name": "temp_1745495269",
+    "embedding_model": "intfloat/multilingual-e5-small"
   },
   "tools": {
     "postgres": {
@@ -57,5 +58,6 @@
     }
   },
   "system_prompt": "Beantworte die Frage in einem json-\u00e4hnlichen format. Beispiel: {\"antwort\": \"<Deine Antwort>\", \"bemerkungen\": \"<Bemerkungen zu Deiner Antwort>\", \"befehl\": \"<Der CLI Befehl>\"}",
-  "model_cache_directory": "/home/m/PycharmProjects/terminAl/model_cache"
+  "model_cache_directory": "/home/m/PycharmProjects/terminAl/model_cache",
+  "chroma_auto_update": false
 }

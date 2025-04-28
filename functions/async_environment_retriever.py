@@ -1,6 +1,4 @@
-import os
-import subprocess
-import asyncio
+import asyncio, os, subprocess
 
 async def environment_retriever():
     """
@@ -35,6 +33,5 @@ async def environment_retriever():
         "parent_process": parent_process,
         "current_working_directory": cwd,
         "user": user,
-        "home_directory": home,
         "hostname": hostname
     }

@@ -1,7 +1,11 @@
-import json
+import asyncio, json, os
 import os
 import asyncio
 from ollama import AsyncClient
+from dotenv import load_dotenv
+
+load_dotenv("./settings/.env")
+terminal_path = os.getenv("TERMINAL_PATH")
 
 
 class OllamaClient:
@@ -12,7 +16,7 @@ class OllamaClient:
 
     def __init__(self, host=None, model=None):
         """Initialize the Ollama client with configuration"""
-        self.settings = json.load(open("./settings/settings.json"))
+        self.settings = json.load(open(terminal_path + "settings/settings.json"))
         self.ollama_settings = self.settings.get("ollama_settings", {})
         self.host = self.ollama_settings.get("ollama_url", "http://localhost:11434")
         self.model = self.ollama_settings.get("ollama_model", "llama3.2:3b-instruct-q4_K_M")

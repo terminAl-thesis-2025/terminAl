@@ -1,16 +1,19 @@
-import json
+import ast, json, os
 import torch
 import chromadb
 from chromadb.utils import embedding_functions
 from chromadb.config import Settings
 from icecream import ic
 from typing import List, Union
+from dotenv import load_dotenv
 
+load_dotenv("./settings/.env")
+terminal_path = os.getenv("TERMINAL_PATH")
 
 
 class AsyncChromaDBRetriever:
     def __init__(self):
-        self.settings = json.load(open("./settings/settings.json"))
+        self.settings = json.load(open(terminal_path + "settings/settings.json"))
         self.chroma_settings = self.settings.get("chroma_settings", {})
 
         # Set up device
@@ -23,32 +26,35 @@ class AsyncChromaDBRetriever:
             device=self.device,
         )
 
-        # Set up ChromaDB client
-        self.client = chromadb.PersistentClient(
+        # ChromaDB Client Set up moved functions, to get current Client!
+
+    async def retrieve(self, user_input: str, top_k):
+
+        # Set up ChromaDB client (not in def __init__() because updating changes the client!
+        client = chromadb.PersistentClient(
             path=self.chroma_settings["chromadb_path"],
             settings=Settings(anonymized_telemetry=False)
         )
 
         # Connect to the Main_Collection
-        self.collection_name = "Main_Collection"
+        collection_name = "Main_Collection"
         try:
-            self.collection = self.client.get_collection(
-                name=self.collection_name,
+            collection = client.get_collection(
+                name=collection_name,
                 embedding_function=self.embedding_function
             )
         except Exception as e:
-            self.collection = None
+            collection = None
 
-    async def retrieve(self, user_input: str, top_k):
-        if not self.collection:
+        if not collection:
             return "Keine Verbindung zur Datenbank."
 
         try:
             # Query the collection
-            results = self.collection.query(
+            results = collection.query(
                 query_texts=[user_input],
                 n_results=top_k,
-                include=["distances"]  # <--- ADD THIS
+                #include=["documents", "metadatas"]  # <--- ADD THIS
             )
 
             if not results or not results.get("documents") or not results.get("distances") or not results.get("ids"):
@@ -75,7 +81,24 @@ class AsyncChromaDBRetriever:
             return f"Fehler bei der Abfrage der ChromaDB: {str(e)}"
 
     async def fulltext_search(self, keywords: Union[str, List[str]], top_k: int = 5):
-        if not self.collection:
+
+        # Set up ChromaDB client (not in def __init__() because updating changes the client!
+        client = chromadb.PersistentClient(
+            path=self.chroma_settings["chromadb_path"],
+            settings=Settings(anonymized_telemetry=False)
+        )
+
+        # Connect to the Main_Collection
+        collection_name = "Main_Collection"
+        try:
+            collection = client.get_collection(
+                name=collection_name,
+                embedding_function=self.embedding_function
+            )
+        except Exception as e:
+            collection = None
+
+        if not collection:
             return "Keine Verbindung zur Datenbank."
 
         if isinstance(keywords, str):
@@ -93,14 +116,20 @@ class AsyncChromaDBRetriever:
             else:
                 where_document = {"$and": [{"$contains": kw} for kw in keywords]}
 
-            results = self.collection.query(
+            results = collection.query(
                 query_texts=[""],
                 n_results=top_k,
                 where_document=where_document,
                 include=["documents", "metadatas"]
             )
 
-            return self._format_context(results)
+            # 1. Format to string
+            formatted_text = self._format_context(results)
+
+            # 2. Parse and print nicely
+            _format_search_results(formatted_text)
+
+            return None
 
         except Exception as e:
             return f"Fehler bei der Volltextsuche: {str(e)}"
@@ -113,3 +142,36 @@ class AsyncChromaDBRetriever:
                     context_text += f"ID: {id_}\nInhalt: {doc}\n\n"
 
         return context_text if context_text else "Keine relevanten Informationen gefunden."
+
+def _format_search_results(results_text: str):
+    """
+    Parses the search results text from ChromaDB and prints each list item individually,
+    or prints the content directly if it's not a list.
+    """
+    for block in results_text.strip().split("\n\n"):
+        lines = block.splitlines()
+        id_line = None
+        content_line = None
+
+        for line in lines:
+            if line.startswith("ID: "):
+                id_line = line
+            elif line.startswith("Inhalt: "):
+                content_line = line.replace("Inhalt: ", "").strip()
+
+        if id_line and content_line:
+            print(id_line)
+
+            # Try to parse content
+            try:
+                parsed_content = ast.literal_eval(content_line)
+                if isinstance(parsed_content, list):
+                    for item in parsed_content:
+                        print(f" - {item}")
+                else:
+                    print(parsed_content)
+            except Exception:
+                # If parsing fails, just print raw
+                print(content_line)
+
+            print()  # Add a newline for separation
