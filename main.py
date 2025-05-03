@@ -1,4 +1,4 @@
-import asyncio, json, os, sys
+import asyncio, json, os, re, shlex, sys
 
 from dotenv import load_dotenv
 from icecream import ic
@@ -8,6 +8,7 @@ from functions.userfunctions import UserFunctions
 from functions.async_chromadb_updater import AsyncChromaDBUpdater
 from functions.async_chromadb_retriever import AsyncChromaDBRetriever
 from functions.async_environment_retriever import environment_retriever
+from functions.system_mapping import SystemMapping
 from divers.ascii_art import terminAl_ascii
 from divers.example_responses import example_dict
 
@@ -87,7 +88,7 @@ class TerminAl:
 
                 elif user_input.startswith(r"\search"):
                     user_input = user_input.split(" ")
-                    seach_results = await self.chroma_retriever.fulltext_search(user_input[1:], top_k=2)
+                    seach_results = await self.chroma_retriever.fulltext_search(user_input[1:], top_k=10)
                     print(seach_results)
 
                 elif user_input.startswith(r"\clear"):
@@ -112,28 +113,80 @@ class TerminAl:
                     print("Unbekannter Befehl. Zeige alle Befehle mit \\help")
 
                 else:
+                    """
                     vector_context, environment_context = await asyncio.gather(
-                        self.chroma_retriever.retrieve(user_input, top_k=2),
+                        self.chroma_retriever.retrieve(user_input, top_k=5, threshold=10),
                         environment_retriever()
                     )
+                    """
+
+                    keywords = self.extract_keywords(user_input)
+
+                    if not self.current_user_database:
+                        vector_context, environment_context = await asyncio.gather(
+                            self.chroma_retriever.fulltext_search(keywords, top_k=5, query=True),
+                            environment_retriever()
+                        )
+                    elif self.current_user_database:
+                        postgres_context = SystemMapping.map_postgres(active_database=self.current_user_database)
+                        vector_context, environment_context = await asyncio.gather(
+                            self.chroma_retriever.fulltext_search(keywords, top_k=5, query=True),
+                            environment_retriever()
+                        )
+                    # Remove <>, otherwise the model gets confused
+                    cleaned_user_input = self.clean_input(user_input)
 
                     # Starte mit wichtigem Kontext (Umgebungskontext)
-                    combined_context = (
+                    full_prompt = (
+                        "Nutze die folgenden Kontextinformationen, wenn sie bei der Beantwortung der Benutzerfrage hilfreich sind.\n"
+                        "Falls Pfade oder Dateinamen angegeben sind, kannst du daraus Ordner ableiten (z.B. durch Entfernen von Dateinamen oder Kürzen auf relevante Teilpfade).\n"
+                        "Vermeide generische Platzhalter wie `/home/user/...` oder `*.pdf`, aber passe Pfade **sinnvoll** an, wenn sie eindeutig auf einen Zielordner hinweisen.\n"
+                        "Wenn ein Pfad Leerzeichen enthält, setze ihn in einfache Anführungszeichen (z.B. `'... Ordner mit Leerzeichen'`).\n\n"
                         "### BEGINN AKTUELLE UMGEBUNGSINFORMATIONEN\n"
                         f"{json.dumps(environment_context, indent=2, ensure_ascii=False)}\n"
                         "### ENDE AKTUELLE UMGEBUNGSINFORMATIONEN\n\n"
-                        "### BEGINN SYSTEM-WISSENSDATENBANK (aus lokaler ChromaDB abgerufen)\n"
-                        f"{vector_context}\n"
-                        "### ENDE SYSTEM-WISSENSDATENBANK\n"
+                        "# BEGINN USERPROMPT\n"
+                        f"{cleaned_user_input}\n"
+                        "Nutze dazu die folgenden Pfade oder Datenbankdetails, wenn vorhanden:"
+                        f"{postgres_context if self.current_user_database else vector_context}\n"
+                        "# ENDE USERPROMPT\n"
                     )
+                    ic()
+                    ic(full_prompt)
 
-                    print(combined_context)
-                    #result = await self.ollama_client.query(prompt=user_input, system_context=combined_context)
+                    result = await self.ollama_client.query(prompt=full_prompt)
+
+                    def fix_json_escapes(s):
+                        # Escape any stray backslashes not part of valid JSON escapes
+                        # Replace: unescaped \ → \\ unless it's already \\ or part of \"
+                        s = re.sub(r'(?<!\\)\\(?!["\\/bfnrtu])', r'\\\\', s)
+                        return s
+
+                    # Try fixing the result string before parsing
+                    try:
+                        safe_result = fix_json_escapes(result)
+                        parsed = json.loads(safe_result)
+                    except json.JSONDecodeError as e:
+                        print("❗ JSON konnte nicht geparsed werden.")
+                        print("Fehlermeldung:", e)
+                        print("Antwort vom Modell:")
+                        print(result)
+
                     examples = json.dumps(example_dict, ensure_ascii=False)
 
+                    ic()
+                    ic(type(parsed))
+                    ic(parsed)
+
+
+
                     examples = json.loads(examples)
-                    result = examples.get(user_input, {})
-                    command = result.get("command", None)
+                    #result = examples.get(user_input, {})
+                    command = parsed.get("command", None)
+
+                    ic()
+                    ic(type(command))
+                    ic(command)
 
                     print(command)
                     if command:
@@ -142,15 +195,17 @@ class TerminAl:
                         print("Kein Befehl erhalten.")
                         continue
                     if decision == "j":
-                        if result["tool"] == "sql" and self.current_user_database:
+                        if parsed["tool"] == "sql" and self.current_user_database:
                             command_list = self.current_user_database + [command]
                             await UserFunctions.cmd(command_list)
-                        elif result["tool"] == "sql" and not self.current_user_database:
+                        elif parsed["tool"] == "sql" and not self.current_user_database:
                             print("Bitte zuerst \\psql login <Datenbankname> ausführen.")
-                        elif result["tool"] == "bash" and self.current_user_database:
+                        elif parsed["tool"] == "bash" and self.current_user_database:
                             print("Bitte von Datenbank abmelden oder reinen SQL-Befehl eingeben.")
-                        elif result["tool"] == "bash" and not self.current_user_database:
-                            command_list = command.split(" ")
+                        elif parsed["tool"] == "bash" and not self.current_user_database:
+                            command_list = shlex.split(command)
+                            # Entferne "sudo" falls vorhanden (Prozess läuft schon als root)
+                            command_list = [item for item in command_list if item.lower() != "sudo"]
                             await UserFunctions.cmd(command_list)
                     elif decision == "n":
                         print("Befehl wurde abgelehnt!")
@@ -195,6 +250,15 @@ class TerminAl:
             return user_input
         except (EOFError, KeyboardInterrupt):
             return r"\exit"
+
+    def extract_keywords(self, user_input: str) -> list[str]:
+        """
+        Extracts keywords wrapped in angle brackets: <keyword>
+        """
+        return re.findall(r"<([^<>]+)>", user_input)
+
+    def clean_input(self, user_input: str) -> str:
+        return re.sub(r"[<>]", "", user_input)
 
 
 async def main():

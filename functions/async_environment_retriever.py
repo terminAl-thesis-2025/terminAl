@@ -23,14 +23,12 @@ async def environment_retriever():
     shell = os.environ.get('SHELL', 'unknown')
     cwd = os.getcwd()
     user = os.environ.get('USER', 'unknown')
-    home = os.environ.get('HOME', 'unknown')
     hostname = os.uname().nodename if hasattr(os, "uname") else "unknown"
 
     parent_process = await get_parent_process()
 
     return {
         "shell": shell,
-        "parent_process": parent_process,
         "current_working_directory": cwd,
         "user": user,
         "hostname": hostname

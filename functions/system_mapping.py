@@ -17,10 +17,10 @@ class SystemMapping:
         return os_results, psql_results
 
     @classmethod
-    def map_postgres(cls):
+    def map_postgres(cls, active_database=None):
         postgres_settings = cls.settings.get("tools", "").get("postgres", "")
         username = postgres_settings.get("username", "")
-        databases = postgres_settings.get("databases", [])  # list of Databses
+        databases = postgres_settings.get("databases", [])  # list of Databases
         mapping_tables_command = postgres_settings.get("mapping_tables_command", [])  # list of command parts
 
         table_results = []
@@ -28,7 +28,7 @@ class SystemMapping:
         mapping_tables_command[2] = username
 
 
-        if databases and mapping_tables_command and username:
+        if databases and mapping_tables_command and username and not active_database:
             for database in databases:
                 mapping_tables_command[5] = database
 
@@ -48,7 +48,7 @@ class SystemMapping:
                     })
 
                 except subprocess.CalledProcessError as e:
-                    ic(e)
+                    ic()
                     ic(f"stdout: {e.stdout}")
                     ic(f"stderr: {e.stderr}")
                     return []
@@ -56,6 +56,33 @@ class SystemMapping:
                     ic()
                     ic(e)
                     return []
+        elif mapping_tables_command and username and active_database:
+            mapping_tables_command[5] = active_database
+
+            try:
+                # Store the result of subprocess.run()
+                result = subprocess.run(
+                    mapping_tables_command,
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
+
+                # Append both database name and command output to psql_results
+                table_results.append({
+                    "database": active_database,
+                    "tables_table": result.stdout
+                })
+
+            except subprocess.CalledProcessError as e:
+                ic()
+                ic(f"stdout: {e.stdout}")
+                ic(f"stderr: {e.stderr}")
+                return []
+            except Exception as e:
+                ic()
+                ic(e)
+                return []
 
         return table_results
 
@@ -96,12 +123,12 @@ class SystemMapping:
                     return cls.process_os_mapping(tree_file_path)
 
                 except subprocess.CalledProcessError as e:
-                    ic(e)
+                    ic()
                     ic(f"stdout: {e.stdout}")
                     ic(f"stderr: {e.stderr}")
                     return {}
                 except Exception as e:
-                    ic(e)
+                    ic()
                     ic(f"error: {e}")
                     return {}
 
@@ -118,12 +145,12 @@ class SystemMapping:
                     return cls.process_os_mapping(tree_file_path)
 
                 except subprocess.CalledProcessError as e:
-                    ic(e)
+                    ic()
                     ic(f"stdout: {e.stdout}")
                     ic(f"stderr: {e.stderr}")
                     return {}
                 except Exception as e:
-                    ic(e)
+                    ic()
                     ic(f"error: {e}")
                     return {}
 
@@ -140,7 +167,7 @@ class SystemMapping:
                     return cls.process_os_mapping(tree_file_path)
 
                 except Exception as e:
-                    ic(e)
+                    ic()
                     ic(f"error: {e}")
                     return {}
 
@@ -170,27 +197,36 @@ class SystemMapping:
             empty_directories = 0
             directories = []
 
-            for root_dir in root_dirs:
-                if root_dir["type"] == "directory":
-                    directories.append(root_dir["name"])
-                if root_dir["type"] == "directory" and root_dir.get("contents", False):
-                    directory_dict[root_dir["name"]] = [item["name"] for item in root_dir["contents"] if
-                                                        item["type"] == "file"]
-                    root_dirs.extend([item for item in root_dir["contents"] if item["type"] == "directory"])
+            for directory in root_dirs:
+                if type(directory) == dict:
+                    if directory["type"] == "directory":
+                        directories.append(directory["name"])
+                    if directory["type"] == "directory" and directory.get("contents", False):
+                        for item in directory["contents"]:
+                            if item["type"] == "file":
+                                item_name = item["name"].split("/")[-1]
+                                directory_dict[item["name"]] = {"filetype": item["type"], "item": item_name}
+                            elif item["type"] == "directory":
+                                root_dirs.append(item)
 
-                elif root_dir["type"] == "directory" and not root_dir.get("contents", False):
-                    directory_dict[root_dir["name"]] = []
-                    empty_directories += 1
+
+                elif directory["type"] == "directory" and not directory.get("contents", False):
+                        item_name = directory["name"].split("/")[-1]
+                        directory_dict[directory["name"]] = {"filetype": directory["type"], "item": item_name}
+                        empty_directories += 1
 
             # Remove Big Items for now. Split up later on.
             for path, content in directory_dict.items():
                 if len(content) > 2000:
                     del directory_dict[path]
 
+            ic()
+            ic(len(directory_dict))
+
             return directory_dict
 
         except Exception as e:
-            ic(e)
+            ic()
             ic(f"error: {e}")
             return {}
 

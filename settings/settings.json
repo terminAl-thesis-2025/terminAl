@@ -18,7 +18,8 @@
   },
   "ollama_settings": {
     "ollama_url": "http://localhost:11434",
-    "ollama_model": "llama3.2:3b-instruct-q4_K_M"
+    "ollama_model2": "llama3.2:3b-instruct-q4_K_M",
+    "ollama_model": "llama3.1:8b-instruct-q4_K_M"
   },
   "chroma_settings": {
     "chromadb_path": "/home/m/PycharmProjects/terminAl/database/vector_db",
@@ -26,7 +27,7 @@
     "chromadb_docs_collection": "docs_collection",
     "chroma_update_interval": 600,
     "chroma_auto_update": false,
-    "chroma_latest_update": "27.04.2025 21:03:24",
+    "chroma_latest_update": "03.05.2025 11:56:44",
     "current_collection_name": "temp_1745495269",
     "embedding_model": "intfloat/multilingual-e5-small"
   },
@@ -57,7 +58,6 @@
       ]
     }
   },
-  "system_prompt": "Beantworte die Frage in einem json-\u00e4hnlichen format. Beispiel: {\"antwort\": \"<Deine Antwort>\", \"bemerkungen\": \"<Bemerkungen zu Deiner Antwort>\", \"befehl\": \"<Der CLI Befehl>\"}",
   "model_cache_directory": "/home/m/PycharmProjects/terminAl/model_cache",
   "chroma_auto_update": false
 }

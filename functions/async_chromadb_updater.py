@@ -74,7 +74,10 @@ class AsyncChromaDBUpdater:
             uuids_to_keep = set()
 
             # Create temporary collection and track its UUID
-            temp_collection = self.client.create_collection(temp_coll_name)
+            temp_collection = self.client.create_collection(
+                temp_coll_name,
+                embedding_function=self.embedding_function
+            )
             uuids_to_keep.add(str(temp_collection.id))
 
             # Add collection_metadata UUID to keep list
@@ -85,20 +88,34 @@ class AsyncChromaDBUpdater:
                 # collection_metadata might not exist yet
                 pass
 
+            ic()
+            ic("PSQL Documents")
+            ic(len(psql_results))
+
             temp_collection.add(
                 documents=[str(psql_result) for psql_result in psql_results],
-                metadatas=[{"tool": "sql"} for i in range(len(psql_results))],
+                metadatas=[{"tool": "sql"} for _ in range(len(psql_results))],
                 ids=[str(i) for i in range(len(psql_results))],
             )
-    
-            documents = [
-                str(directory_content) if directory_content else str(directory)
-                for directory, directory_content in os_results.items()
+
+            documents = [f"*Dokument: {meta['item']} Pfad: {path}*" for path, meta in os_results.items()]
+
+            metadatas = [
+                {
+                    "tool": "bash",
+                    "filetype": meta["filetype"],
+                    "item": meta["item"]
+                }
+                for meta in os_results.values()
             ]
-            metadatas = [{"tool": "bash"} for _ in documents]
+
+            ic()
+            ic("Os Documents")
+            ic(len(documents))
+
             # OFFSET the IDs by the number of psql_documents
             ids = [str(i + psql_result_len) for i in range(len(documents))]
-    
+
             for doc_chunk, meta_chunk, id_chunk in zip(
                     self._chunked(documents, batch_size),
                     self._chunked(metadatas, batch_size),
@@ -112,7 +129,9 @@ class AsyncChromaDBUpdater:
 
             ic()
             ic(f"Temp Collection before Deleting Main Collection: {temp_collection.name, temp_collection.id}")
+            ic(f"Temp_collection Size {temp_collection.count()}")
             ic(f"UUIDs to keep: {uuids_to_keep}")
+
 
             # Delete Main_Collection if it exists
             try:
@@ -134,7 +153,6 @@ class AsyncChromaDBUpdater:
                 ic()
                 ic(e)
 
-            ic()
             try:
                 ic(f"Main Collection after Deleting Main Collection: {check_main_coll2.name, check_main_coll2.id}")
             except Exception as e:
@@ -151,8 +169,14 @@ class AsyncChromaDBUpdater:
             temp_collection_to_update = self.client.get_collection(temp_coll_name)
             temp_collection_to_update.modify(name="Main_Collection")
 
+
+
+
             try:
                 check_main_coll1 = self.client.get_collection("Main_Collection")
+                ic()
+                ic("Main Collection after Deleting Main Collection")
+                ic(f"Temp_collection Size {check_main_coll1.count()}")
             except Exception as e:
                 ic()
                 ic(e)

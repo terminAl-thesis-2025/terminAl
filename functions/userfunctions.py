@@ -106,14 +106,6 @@ class UserFunctions:
                 text=True
             )
 
-            process = subprocess.Popen(
-                popen_input,
-                shell=use_shell,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-
             # Read stdout live
             while True:
                 line = process.stdout.readline()
@@ -151,10 +143,38 @@ class UserFunctions:
             databases = tool_settings.get('postgres').get('databases')
 
             if user_input[0] == "list":
-                print("Verfügbare Datenbanken:")
-                for db in databases:
-                    print(f"  - {db}")
+                # If only "list" or "list dbs" --> show databases
+                if len(user_input) == 1 or (len(user_input) == 2 and user_input[1].lower() == "dbs"):
+                    print("Verfügbare Datenbanken:")
+                    for db in databases:
+                        print(f"  - {db}")
                     return None
+                # If "list <dbname>" --> list tables inside that db
+                elif len(user_input) == 2 and user_input[1] in databases:
+                    db_name = user_input[1]
+                    print(f"Starte Abfrage der Tabellen für Datenbank '{db_name}'...")
+
+                    command = ["sudo", "-u", username, "psql", "-d", db_name, "-c", r"\dt+"]
+                    process = subprocess.Popen(
+                        command,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True
+                    )
+
+                    stdout, stderr = process.communicate()
+
+                    if process.returncode == 0:
+                        print(stdout)
+                    else:
+                        print(f"Fehler beim Abfragen der Tabellen:\n{stderr}")
+
+                    return None
+                else:
+                    print(
+                        "Ungültige Eingabe für 'list'. Entweder nur 'list', 'list dbs' oder 'list <DB-Name>' angeben.")
+                    return None
+
             elif user_input[0] == "login" and user_input[1] in databases:
                 print(f"Starte psql als Benutzer '{username}' auf Datenbank '{user_input[1]}'...")
                 return ["sudo", "-u", username, "psql", "-d", user_input[1], "-c"]
@@ -165,7 +185,8 @@ class UserFunctions:
                 print("Beendet")
                 return None
             else:
-                print("Ungültige Eingabe. Bitte 'list' aufrufen oder eine gültige Datenbank angeben.")
+                print(
+                    "Ungültige Eingabe. Bitte 'list', 'list dbs', 'list <DB-Name>' oder eine gültige Datenbank angeben.")
                 return None
 
         except Exception as e:

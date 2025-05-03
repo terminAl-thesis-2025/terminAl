@@ -1,11 +1,24 @@
 import ast, json, os
+from enum import nonmember
+
 import torch
 import chromadb
+import nltk
 from chromadb.utils import embedding_functions
 from chromadb.config import Settings
 from icecream import ic
 from typing import List, Union
 from dotenv import load_dotenv
+
+try:
+    from nltk.corpus import stopwords
+    stopwords.words("german")  # Try to access it
+except LookupError:
+    import nltk
+    nltk.download('stopwords')
+    from nltk.corpus import stopwords  # Re-import after download
+    stopwords.words("german")  # Now this should work
+
 
 load_dotenv("./settings/.env")
 terminal_path = os.getenv("TERMINAL_PATH")
@@ -28,7 +41,7 @@ class AsyncChromaDBRetriever:
 
         # ChromaDB Client Set up moved functions, to get current Client!
 
-    async def retrieve(self, user_input: str, top_k):
+    async def retrieve(self, user_input: str, top_k=2, threshold=0.3):
 
         # Set up ChromaDB client (not in def __init__() because updating changes the client!
         client = chromadb.PersistentClient(
@@ -54,33 +67,28 @@ class AsyncChromaDBRetriever:
             results = collection.query(
                 query_texts=[user_input],
                 n_results=top_k,
-                #include=["documents", "metadatas"]  # <--- ADD THIS
+                include=["documents", "metadatas"],
             )
 
-            if not results or not results.get("documents") or not results.get("distances") or not results.get("ids"):
+            ic()
+            ic(results)
+
+            if not results or not results.get("documents") or not any(results["documents"]):
                 return "Keine relevanten Informationen gefunden."
 
-            filtered_docs = []
-            for doc_list, id_list, dist_list in zip(results["documents"], results["ids"], results["distances"]):
-                for doc, id_, dist in zip(doc_list, id_list, dist_list):
-                    if dist < 0.2:  # <-- set your threshold here
-                        filtered_docs.append((id_, doc))
-
-            if not filtered_docs:
+            if results.get("documents") and results.get("ids"):
+                formatted_context = ""
+                for doc_list, id_list in zip(results["documents"], results["ids"]):
+                    for doc, id_ in zip(doc_list, id_list):
+                        formatted_context += f"ID: {id_}\nInhalt: {doc}\n\n"
+                return formatted_context if formatted_context else "Keine relevanten Informationen gefunden."
+            else:
                 return "Keine relevanten Informationen gefunden."
-
-            # Format the context from filtered docs
-            formatted_context = ""
-            for id_, doc in filtered_docs:
-                formatted_context += f"ID: {id_}\nInhalt: {doc}\n\n"
-
-            return formatted_context if formatted_context else "Keine relevanten Informationen gefunden."
-
 
         except Exception as e:
             return f"Fehler bei der Abfrage der ChromaDB: {str(e)}"
 
-    async def fulltext_search(self, keywords: Union[str, List[str]], top_k: int = 5):
+    async def fulltext_search(self, keywords: Union[str, List[str]], top_k: int = 5, query=False):
 
         # Set up ChromaDB client (not in def __init__() because updating changes the client!
         client = chromadb.PersistentClient(
@@ -105,30 +113,44 @@ class AsyncChromaDBRetriever:
             keywords = [keywords]
 
         keywords = [kw.lower() for kw in keywords if kw.strip()]  # Leere Strings entfernen
+        # Filter Natural Language Query only
+        if query:
+            keywords = [kw for kw in keywords if kw not in stopwords.words("german")]
 
         if not keywords:
             return "Bitte gib mindestens ein Suchwort an."
+
+        ic()
+        ic(keywords)
 
         try:
             # Je nach Anzahl der Keywords unterschiedlich bauen
             if len(keywords) == 1:
                 where_document = {"$contains": keywords[0]}
-            else:
+            elif len(keywords) > 1 and query:
+                where_document = {"$or": [{"$contains": kw} for kw in keywords]}
+            elif len(keywords) > 1 and not query:
                 where_document = {"$and": [{"$contains": kw} for kw in keywords]}
 
+            ic()
+            ic(where_document)
+
             results = collection.query(
-                query_texts=[""],
-                n_results=top_k,
+                query_texts="",
                 where_document=where_document,
+                n_results=top_k,
                 include=["documents", "metadatas"]
             )
 
             # 1. Format to string
             formatted_text = self._format_context(results)
 
-            # 2. Parse and print nicely
-            _format_search_results(formatted_text)
-
+            if query:
+                return formatted_text
+            else:
+                # 2. Parse and print nicely
+                _format_search_results(formatted_text)
+                return None
             return None
 
         except Exception as e:

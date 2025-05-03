@@ -1,8 +1,8 @@
 import asyncio, json, os
-import os
-import asyncio
 from ollama import AsyncClient
 from dotenv import load_dotenv
+
+from settings.system_prompts import system_prompt
 
 load_dotenv("./settings/.env")
 terminal_path = os.getenv("TERMINAL_PATH")
@@ -21,7 +21,7 @@ class OllamaClient:
         self.host = self.ollama_settings.get("ollama_url", "http://localhost:11434")
         self.model = self.ollama_settings.get("ollama_model", "llama3.2:3b-instruct-q4_K_M")
         self.client = AsyncClient(host=self.host)
-        self.system_prompt = self.settings["system_prompt"]
+        self.system_prompt = system_prompt
 
     async def query(self, prompt, system_context=None, temperature=0.1):
         """
@@ -62,7 +62,7 @@ class OllamaClient:
 
         except Exception as e:
             return f"Fehler bei der Kommunikation mit Ollama: {str(e)}"
-
+    '''
     def extract_command(self, response):
         """
         Extract the most likely command from an LLM response.
@@ -100,4 +100,4 @@ class OllamaClient:
             for i, (doc, path_id) in enumerate(zip(context_results["documents"], context_results["ids"])):
                 context_text += f"Path: {path_id}\nContents: {doc}\n\n"
 
-        return context_text if context_text else "Keine relevanten Systeminformationen gefunden."
+        return context_text if context_text else "Keine relevanten Systeminformationen gefunden."'''
