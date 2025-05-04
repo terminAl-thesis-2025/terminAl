@@ -1,17 +1,24 @@
-import asyncio, datetime, json, os, shutil, time
+# Standard Bibliotheken - alphabetisch sortiert
+import asyncio
+import datetime
+import json
+import os
+import shutil
 import sqlite3
+import time
 
+# Externe Bibliotheken
 import chromadb
-from tqdm import tqdm as tqdm_func
-import torch
-from chromadb.utils import embedding_functions
 from chromadb.config import Settings
-from icecream import ic
-
-from functions.system_mapping import SystemMapping
-# from functions.chromadb_client import ChromaDB
+from chromadb.utils import embedding_functions
 from dotenv import load_dotenv
+from icecream import ic
+import torch
 
+# Interne Module
+from functions.system_mapping import SystemMapping
+
+# Umgebungsvariablen laden
 load_dotenv("./settings/.env")
 terminal_path = os.getenv("TERMINAL_PATH")
 
@@ -24,82 +31,109 @@ class AsyncChromaDBUpdater:
     """
 
     def __init__(self):
+        """
+        Initialisiert den AsyncChromaDBUpdater mit Konfigurationen, ChromaDB-Client
+        und erforderlichen Einstellungen für das Embedding-Modell.
+        """
+        # Einstellungen aus JSON-Datei laden
         self.settings = json.load(open(terminal_path + "settings/settings.json"))
         self.chroma_settings = self.settings.get("chroma_settings", {})
-        self.update_interval = self.chroma_settings.get("chroma_update_interval", 600)  # Standard: 10 Minuten
-        self.auto_update = self.chroma_settings.get("chroma_auto_update", False)  # Standard: Automatisches Update aktiviert
-        self.chromadb_path = self.chroma_settings.get("chromadb_path", None)
-        self.chroma_latest_update = self.chroma_settings.get("chroma_latest_update", None)
-        self.is_updating = False
-        self.update_lock = asyncio.Lock()
 
-        # Set Up ChromaDB Client
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        # Standardkonfigurationen aus den Einstellungen extrahieren oder Standardwerte verwenden
+        self.update_interval = self.chroma_settings.get("chroma_update_interval", 600)  # Standard: 10 Minuten
+        self.auto_update = self.chroma_settings.get("chroma_auto_update",
+                                                    False)  # Standard: Automatisches Update aktiviert
+        self.chromadb_path = self.chroma_settings.get("chromadb_path", None)  # Pfad zur ChromaDB
+        self.chroma_latest_update = self.chroma_settings.get("chroma_latest_update",
+                                                             None)  # Zeitstempel der letzten Aktualisierung
+
+        # Status-Variablen für den Update-Prozess
+        self.is_updating = False  # Flag, ob gerade ein Update läuft
+        self.update_lock = asyncio.Lock()  # Lock zur Vermeidung paralleler Updates
+
+        # Hardware-Beschleunigung für Embeddings konfigurieren
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"  # GPU nutzen, falls verfügbar
+        # Embedding-Funktion mit mehrsprachigem Modell initialisieren
         self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
             model_name="intfloat/multilingual-e5-small",
             cache_folder=self.settings["model_cache_directory"],
             device=self.device,
         )
-        self.client = chromadb.PersistentClient(path=self.chromadb_path,
-                                           settings=Settings(anonymized_telemetry=False))
 
-        # ChromaDB-Einstellungen initialisieren
+        # Name der ChromaDB-Collection aus den Einstellungen extrahieren
         self.chroma_collection = self.chroma_settings.get("chromadb_tree_collection")
 
     async def start_update_cycle(self):
         """
-        Startet den periodischen Update-Zyklus als Hintergrundaufgabe
+        Startet den periodischen Update-Zyklus als Hintergrundaufgabe.
+        Führt Updates gemäß dem konfigurierten Intervall durch, wenn auto_update aktiviert ist.
         """
         while True:
             # Nur updaten, wenn auto_update aktiviert ist
             if self.auto_update:
-                await self.update_system_mapping()
+                await self.update_system_mapping()  # Führt das eigentliche Update durch
 
-            # Auf den nächsten Update-Zyklus warten
+            # Auf den nächsten Update-Zyklus warten (in Sekunden)
             await asyncio.sleep(self.update_interval)
 
     async def update_system_mapping(self):
-        async with self.update_lock:
-            start_time = time.time()
+        """
+        Hauptfunktion zur Aktualisierung der Systemstruktur in ChromaDB.
+        Verwendet ein Lock, um Parallelausführungen zu verhindern.
+        Erstellt eine temporäre Sammlung, füllt sie mit Daten und benennt sie dann um.
+        Somit sollen Zugriffskonflikte verhindert werden, wenn während dem Update ChromaDB abgefragt wird.
+        """
+        async with self.update_lock:  # Verhindert gleichzeitige Updates
+            # TODO Remove Zeitmessung
+            start_time = time.time()  # Startzeit für Zeitmessung
 
-            # Prevent duplicate updates
+            # Erstelle den ChromaDB-Client (nicht in __init__, damit der aktuelle Client geladen wird)
+            client = chromadb.PersistentClient(
+                path=self.chromadb_path,
+                settings=Settings(anonymized_telemetry=False)
+            )
+
+            # Status auf 'aktualisierend' setzen
             self.is_updating = True
 
+            # Daten von SystemMapping holen (OS- und PostgreSQL-Informationen)
             os_results, psql_results = SystemMapping().map_all()
-            temp_coll_name = f"temp_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
-            batch_size = 5000 # Small batch size to prevent RAM and VRAM overload
-            psql_result_len = len(psql_results)
 
-            # Track UUIDs to keep
+            # Temporäre Sammlung mit Zeitstempel erstellen
+            temp_coll_name = f"temp_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+            batch_size = 5000  # Große Datenmengen in Batches verarbeiten
+            psql_result_len = len(psql_results)  # Anzahl der PostgreSQL-Ergebnisse
+
+            # Set zum Speichern von UUIDs, die beim Aufräumen erhalten bleiben sollen
             uuids_to_keep = set()
 
-            # Create temporary collection and track its UUID
-            temp_collection = self.client.create_collection(
+            # Temporäre Sammlung erstellen und ihre UUID speichern
+            temp_collection = client.create_collection(
                 temp_coll_name,
                 embedding_function=self.embedding_function
             )
             uuids_to_keep.add(str(temp_collection.id))
 
-            # Add collection_metadata UUID to keep list
+            # Collection_metadata UUID der Liste zum Beibehalten hinzufügen
             try:
-                metadata_collection = self.client.get_collection("collection_metadata")
+                metadata_collection = client.get_collection("collection_metadata")
                 uuids_to_keep.add(str(metadata_collection.id))
             except Exception:
-                # collection_metadata might not exist yet
+                # Collection_metadata existiert möglicherweise noch nicht - ignorieren
                 pass
 
-            ic()
-            ic("PSQL Documents")
-            ic(len(psql_results))
-
+            # PostgreSQL-Ergebnisse zur temporären Sammlung hinzufügen
             temp_collection.add(
-                documents=[str(psql_result) for psql_result in psql_results],
-                metadatas=[{"tool": "sql"} for _ in range(len(psql_results))],
-                ids=[str(i) for i in range(len(psql_results))],
+                documents=[str(psql_result) for psql_result in psql_results],  # Ergebnisse als Strings
+                metadatas=[{"tool": "sql"} for _ in range(len(psql_results))],  # Metadaten für jeden Eintrag
+                ids=[str(i) for i in range(len(psql_results))],  # Fortlaufende IDs
             )
 
-            documents = [f"*Dokument: {meta['item']} Pfad: {path}*" for path, meta in os_results.items()]
+            # OS-Ergebnisse vorbereiten
+            documents = [f"*Dokument: {meta['item']} Pfad: {path}*" for path, meta in
+                         os_results.items()]  # Formatierte Dokumente
 
+            # Metadaten für OS-Ergebnisse erstellen
             metadatas = [
                 {
                     "tool": "bash",
@@ -109,13 +143,10 @@ class AsyncChromaDBUpdater:
                 for meta in os_results.values()
             ]
 
-            ic()
-            ic("Os Documents")
-            ic(len(documents))
-
-            # OFFSET the IDs by the number of psql_documents
+            # IDs für OS-Ergebnisse fortlaufend nach den PostgreSQL-IDs nummerieren
             ids = [str(i + psql_result_len) for i in range(len(documents))]
 
+            # OS-Ergebnisse in Batches zur temporären Sammlung hinzufügen
             for doc_chunk, meta_chunk, id_chunk in zip(
                     self._chunked(documents, batch_size),
                     self._chunked(metadatas, batch_size),
@@ -127,179 +158,157 @@ class AsyncChromaDBUpdater:
                     ids=id_chunk
                 )
 
-            ic()
-            ic(f"Temp Collection before Deleting Main Collection: {temp_collection.name, temp_collection.id}")
-            ic(f"Temp_collection Size {temp_collection.count()}")
-            ic(f"UUIDs to keep: {uuids_to_keep}")
-
-
-            # Delete Main_Collection if it exists
+            # Hauptsammlung löschen, falls vorhanden
             try:
-                main_collection = self.client.get_collection("Main_Collection")
-                ic(f"Main Collection before Deleting Main Collection: {main_collection.name, main_collection.id}")
-                self.client.delete_collection("Main_Collection")
-            except Exception as e:
-                ic()
-                ic(e)
-
-            try:
-                check_main_coll2 = self.client.get_collection("Main_Collection")
-            except Exception as e:
-                ic()
-                ic(e)
-            try:
-                check_temp_coll2 = self.client.get_collection(temp_coll_name)
-            except Exception as e:
-                ic()
-                ic(e)
-
-            try:
-                ic(f"Main Collection after Deleting Main Collection: {check_main_coll2.name, check_main_coll2.id}")
-            except Exception as e:
-                ic()
-                ic(e)
-
-            try:
-                ic(f"Temp Collection after Deleting Main Collection: {check_temp_coll2.name, check_temp_coll2.id}")
-            except Exception as e:
-                ic()
-                ic(e)
-
-            # Rename temp collection to Main_Collection
-            temp_collection_to_update = self.client.get_collection(temp_coll_name)
-            temp_collection_to_update.modify(name="Main_Collection")
-
-
-
-
-            try:
-                check_main_coll1 = self.client.get_collection("Main_Collection")
-                ic()
-                ic("Main Collection after Deleting Main Collection")
-                ic(f"Temp_collection Size {check_main_coll1.count()}")
-            except Exception as e:
-                ic()
-                ic(e)
-            try:
-                check_temp_coll1 = self.client.get_collection(temp_coll_name)
-            except Exception as e:
-                ic()
-                ic(e)
-
-            ic()
-            try:
-                ic(f"Temp Collection after renaming Temp Collection: {check_temp_coll1.name, check_temp_coll1.id}")
-            except Exception as e:
-                ic()
-                ic(e)
-
-            try:
-                ic(f"Main Collection after renaming Temp Collection: {check_main_coll1.name, check_main_coll1.id}")
-            except Exception as e:
-                ic()
-                ic(e)
-
-            # TODO Remove
-            # Add collection_metadata UUID to keep list
-            try:
-                metadata_collection = self.client.get_collection("collection_metadata")
-                uuids_to_keep.add(str(metadata_collection.id))
+                client.delete_collection("Main_Collection")
             except Exception:
-                # collection_metadata might not exist yet
+                # Hauptsammlung existiert möglicherweise noch nicht - ignorieren
                 pass
 
-            # Do cleanup with our uuids_to_keep list
-            self._clean_up(uuids_to_keep)
+            # Temporäre Sammlung in Hauptsammlung umbenennen
+            temp_collection_to_update = client.get_collection(temp_coll_name)
+            temp_collection_to_update.modify(name="Main_Collection")
 
+            # Collection UUIDs erneut zur Liste hinzufügen (zur Sicherheit)
+            try:
+                metadata_collection = client.get_collection("collection_metadata")
+                main_collection = client.get_collection("Main_Collection")
+                uuids_to_keep.add(str(metadata_collection.id))
+                uuids_to_keep.add(str(main_collection.id))
+            except Exception:
+                # Falls Collections nicht vorhanden: ignorieren
+                pass
+
+            # Alte Sammlungen aufräumen und nur die relevanten behalten
+            self._clean_up()
+
+            # Zeitstempel der letzten Aktualisierung speichern
             self._update_update_time()
+            # Update-Status zurücksetzen
             self.is_updating = False
 
+            # Zeitmessung abschließen und Dauer ausgeben
             end_time = time.time()
             time_elapsed = end_time - start_time
-            print(f"Time taken for updating ChromaDB: {time_elapsed/60} minutes")
+            # TODO remove Zeitmessung
+            print(f"Zeit für die Aktualisierung von ChromaDB: {time_elapsed / 60} Minuten")
 
     async def auto_update_on(self):
+        """
+        Aktiviert die automatischen Updates und speichert die Einstellung.
+        """
         self.auto_update = True
         self.settings["chroma_auto_update"] = True
-        # Save settings
+        # Aktualisierte Einstellungen in die JSON-Datei schreiben
         with open("./settings/settings.json", 'w', encoding="utf-8") as file:
             json.dump(self.settings, file, indent=2)
 
     async def auto_update_off(self):
+        """
+        Deaktiviert die automatischen Updates und speichert die Einstellung.
+        """
         self.auto_update = False
         self.settings["chroma_auto_update"] = False
-        # Save settings
+        # Aktualisierte Einstellungen in die JSON-Datei schreiben
         with open("./settings/settings.json", 'w', encoding="utf-8") as file:
             json.dump(self.settings, file, indent=2)
 
     def _update_update_time(self):
-        now = datetime.datetime.now()
-        formatted_now = now.strftime("%d.%m.%Y %H:%M:%S")
+        """
+        Aktualisiert den Zeitstempel der letzten Aktualisierung in den Einstellungen.
+        """
+        now = datetime.datetime.now()  # Aktuelles Datum und Uhrzeit
+        formatted_now = now.strftime("%d.%m.%Y %H:%M:%S")  # In lesbares Format formatieren
         self.chroma_latest_update = formatted_now
         self.settings["chroma_settings"]["chroma_latest_update"] = self.chroma_latest_update
-        # Save the updated settings file
+        # Aktualisierte Einstellungen in die JSON-Datei schreiben
         with open("./settings/settings.json", "w", encoding="utf-8") as file:
             json.dump(self.settings, file, indent=2)
 
     def _chunked(self, iterable, size):
+        """
+        Hilfsfunktion zum Aufteilen einer Liste in Teile der angegebenen Größe.
+        Wird verwendet, um große Datenmengen in verarbeitbare Batches aufzuteilen.
+
+        Args:
+            iterable: Die aufzuteilende Liste
+            size: Die Größe jedes Teils
+
+        Returns:
+            Generator, der Teile der angegebenen Größe zurückgibt
+        """
         for i in range(0, len(iterable), size):
             yield iterable[i:i + size]
 
     def list_collections(self):
-        # List collections using ChromaDB client
-        print("\n=== Collections via ChromaDB Client ===")
-        collections = self.client.list_collections()
-        for collection in collections:
-            retrieved_coll = self.client.get_collection(collection)
-            print(f"Collection: {retrieved_coll.name} --> {retrieved_coll.id}")
+        """
+        Listet alle Sammlungen in der ChromaDB auf, sowohl über den ChromaDB-Client als auch
+        direkt aus der SQLite-Datenbank, um Konsistenz zu überprüfen.
+        """
+        # Erstelle den ChromaDB-Client (nicht in __init__, damit der aktuelle Client geladen wird)
+        client = chromadb.PersistentClient(
+            path=self.chromadb_path,
+            settings=Settings(anonymized_telemetry=False)
+        )
 
-        # Now also directly read from the database
-        db_path = os.path.join(self.chromadb_path, "chroma.sqlite3")
+        # Sammlungen über ChromaDB-Client auflisten
+        print("\n=== Sammlungen über ChromaDB-Client ===")
+        collections = client.list_collections()
+        for collection in collections:
+            retrieved_coll = client.get_collection(collection)
+            print(f"Sammlung: {retrieved_coll.name} --> {retrieved_coll.id}")
+
+        # Auch direkt aus der SQLite-Datenbank lesen (zur Überprüfung)
+        db_path = os.path.join(self.chromadb_path, "chroma.sqlite3")  # Pfad zur SQLite-Datenbank
 
         if not os.path.exists(db_path):
-            print("\nSQLite database not found.")
+            ic()
+            ic("\nSQLite-Datenbank nicht gefunden.")
             return
 
-        print("\n=== Collections via SQLite Database ===")
+        print("\n=== Sammlungen über SQLite-Datenbank ===")
         try:
+            # SQLite-Verbindung herstellen
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
+            # Alle Sammlungen aus der Datenbank abfragen
             cursor.execute("SELECT name, uuid FROM collections;")
             rows = cursor.fetchall()
 
+            # Sammlungen ausgeben
             for row in rows:
                 name, uuid = row
-                print(f"DB Collection: {name} --> {uuid}")
+                print(f"DB-Sammlung: {name} --> {uuid}")
 
             cursor.close()
             conn.close()
         except Exception as e:
-            print(f"Error reading database: {e}")
+            ic()
+            ic(e)
 
-    def _clean_up(self, uuids_to_keep=None):
+    def _clean_up(self):
         """
         Bereinigt den ChromaDB-Speicher:
-        - Behalte maximal die 15 neuesten Ordner (basierend auf Änderungszeit).
+        - Behält maximal die 15 neuesten Ordner (basierend auf Änderungszeit).
         - Löscht alle älteren Ordner.
-        - Führt VACUUM auf der chroma.sqlite3-Datenbank durch.
+        - Führt VACUUM auf der chroma.sqlite3-Datenbank durch, um den Speicherplatz zu optimieren.
         """
         if not os.path.exists(self.chromadb_path):
-            print(f"Pfad {self.chromadb_path} existiert nicht. Cleanup übersprungen.")
             return
 
+        # Alle Dateien und Ordner im ChromaDB-Verzeichnis auflisten
         all_entries = os.listdir(self.chromadb_path)
-        print(f"All entries: {all_entries}")
 
-        # Nur echte Ordner (keine Dateien) auflisten
+        # Nur echte Ordner (keine Dateien) auswählen
         all_folders = [
             entry for entry in all_entries
             if os.path.isdir(os.path.join(self.chromadb_path, entry))
         ]
-        print(f"Detected folders: {all_folders}")
 
+        # Vollständige Pfade zu den Ordnern erstellen
         folder_paths = [os.path.join(self.chromadb_path, folder) for folder in all_folders]
 
-        # Änderungszeit für alle Ordner holen
+        # Änderungszeit für alle Ordner erfassen
         folder_paths_with_mtime = [
             (path, os.path.getmtime(path)) for path in folder_paths
         ]
@@ -307,28 +316,25 @@ class AsyncChromaDBUpdater:
         # Sortieren nach Änderungszeit (neueste zuerst)
         folder_paths_with_mtime.sort(key=lambda x: x[1], reverse=True)
 
-        # Ordner aufteilen: neueste 15 behalten, Rest löschen
-        folders_to_keep = folder_paths_with_mtime[:15]
-        folders_to_delete = folder_paths_with_mtime[15:]
+        # Die 15 neuesten Ordner behalten, den Rest löschen
+        folders_to_delete = folder_paths_with_mtime[15:]  # Alle anderen
 
-        # Löschen der alten Ordner
+        # Alte Ordner löschen
         for path, mtime in folders_to_delete:
             try:
-                shutil.rmtree(path)
-                print(f"Gelöscht (älter als Top-15): {path} (Letzte Änderung: {time.ctime(mtime)})")
+                shutil.rmtree(path)  # Rekursives Löschen des Ordners und seines Inhalts
             except Exception as e:
-                print(f"Fehler beim Löschen von {path}: {e}")
+                ic()
+                ic(f"Fehler beim Löschen von {path}: {e}")
 
-        if not folders_to_delete:
-            print("Weniger als 15 Ordner vorhanden oder keine alten Ordner zum Löschen.")
-
-        # VACUUM auf der SQLite-Datenbank
+        # SQLite-Datenbank optimieren (Speicherplatz freigeben)
         db_path = os.path.join(self.chromadb_path, "chroma.sqlite3")
         if os.path.exists(db_path):
             try:
                 conn = sqlite3.connect(db_path)
-                conn.execute("VACUUM;")
+                conn.execute("VACUUM;")  # VACUUM-Befehl zur Optimierung
                 conn.close()
                 print("VACUUM auf chroma.sqlite3 erfolgreich abgeschlossen.")
             except Exception as e:
-                print(f"Fehler beim VACUUM der Datenbank: {e}")
+                ic()
+                ic(f"Fehler beim VACUUM der Datenbank: {e}")

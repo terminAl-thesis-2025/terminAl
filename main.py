@@ -1,69 +1,90 @@
-import asyncio, json, os, re, shlex, sys
+# Standard Bibliotheken
+import asyncio  # Für asynchrone Programmierung
+import json  # Für JSON Verarbeitung
+import os  # Für Betriebssystemfunktionen
+import re  # Für reguläre Ausdrücke
+import shlex  # Für Shell-Argument-Parsing
+import sys  # Für Systemfunktionen
 
-from dotenv import load_dotenv
-from icecream import ic
+# Externe Bibliotheken
+from dotenv import load_dotenv  # Laden von Umgebungsvariablen aus .env Dateien
+from icecream import ic  # Für verbesserte Debug-Ausgaben
 
+# Eigene Module
 from functions.ollama_client import OllamaClient
 from functions.userfunctions import UserFunctions
 from functions.async_chromadb_updater import AsyncChromaDBUpdater
 from functions.async_chromadb_retriever import AsyncChromaDBRetriever
 from functions.async_environment_retriever import environment_retriever
-from functions.system_mapping import SystemMapping
 from divers.ascii_art import terminAl_ascii
-from divers.example_responses import example_dict
 
+# Umgebungsvariablen aus .env Datei laden
 load_dotenv("./settings/.env")
-terminal_path = os.getenv("TERMINAL_PATH")
+terminal_path = os.getenv("TERMINAL_PATH")  # Pfad zum Terminal-Verzeichnis
 
 
 class TerminAl:
+    """
+    Hauptklasse für das TerminAl-Programm, das eine intelligente Terminal-Schnittstelle bietet.
+    Verwaltet ChromaDB für Vektorsuche und interagiert mit dem Ollama-Sprachmodell.
+    """
+
     def __init__(self):
-        self.settings = json.load(open(terminal_path + "settings/settings.json"))
-        self.env = os.getenv("ollama_key")
-        self.chroma_updater = AsyncChromaDBUpdater()
-        self.ollama_client = OllamaClient()
-        self.chroma_retriever = AsyncChromaDBRetriever()
-        self.current_user_database = None
+        """
+        Initialisiert die TerminAl-Instanz mit allen erforderlichen Komponenten.
+        """
+        self.settings = json.load(
+            open(terminal_path + "settings/settings.json"))  # Lädt Einstellungen aus der JSON-Datei
+        self.env = os.getenv("ollama_key")  # API-Schlüssel für Ollama
+        self.chroma_updater = AsyncChromaDBUpdater()  # Komponente für ChromaDB-Updates
+        self.ollama_client = OllamaClient()  # Client für die Kommunikation mit dem Ollama-Modell
+        self.chroma_retriever = AsyncChromaDBRetriever()  # Komponente für ChromaDB-Abfragen
+        self.current_user_database = None  # Aktuelle Datenbankverbindung des Benutzers
+        self.manual_update_task = None  # Task für manuelles Update initialisieren
 
     async def check(self):
+        """
+        Überprüft die Einstellungen und Umgebungsvariablen (Hilfsfunktion für Debugging).
+        """
         print(self.settings)
         print(self.env)
 
     async def run(self):
-        await UserFunctions.clear(option=False)
+        """
+        Hauptausführungsroutine, die die Benutzeroberfläche startet und Eingaben verarbeitet.
+        """
+        await UserFunctions.clear(option=True)  # Terminal bereinigen
 
-        print(terminAl_ascii)
         print("Willkommen bei terminAl!\nZeige Benutzerhandbuch mit: \\help")
 
-        # Start the ChromaDB update cycle as a background task
+        # ChromaDB-Update-Zyklus als Hintergrundtask starten
         update_task = asyncio.create_task(self.chroma_updater.start_update_cycle())
 
-        # Track manual update tasks
-        manual_update_task = None
-
-        # Run the main input loop
+        # Haupteingabeschleife ausführen
         try:
             while True:
-                user_input = await self.get_user_input()
+                user_input = await self.get_user_input()  # Benutzereingabe asynchron erhalten
 
                 # Verwenden der bestehenden UserFunctions-Klasse für die Standardbefehle
                 if user_input.startswith(r"\update"):
-                    action = user_input.split(" ")[1]
+                    action = user_input.split(" ")[1]  # Aktionsbefehl extrahieren
                     match action:
                         case "on":
-                            await self.chroma_updater.auto_update_on()
+                            await self.chroma_updater.auto_update_on()  # Automatisches Update aktivieren
                             print("Automatisches Update wurde aktiviert.")
                         case "off":
-                            await self.chroma_updater.auto_update_off()
+                            await self.chroma_updater.auto_update_off()  # Automatisches Update deaktivieren
                             print("Automatisches Update wurde deaktiviert.")
                         case "now":
                             print("Update startet. Bitte warten.")
-                            if not manual_update_task or manual_update_task.done():
+                            if not self.manual_update_task or self.manual_update_task.done():
                                 print("Bitte warten bis das Update beendet ist.")
-                                manual_update_task = asyncio.create_task(self.chroma_updater.update_system_mapping())
-                                await manual_update_task
+                                # Manuelles Update als Task starten
+                                self.manual_update_task = asyncio.create_task(self.chroma_updater.update_system_mapping())
+                                await self.manual_update_task  # Auf Abschluss warten
                                 print("Update abgeschlossen.")
                         case "status":
+                            # Status und Zeitpunkt des letzten Updates anzeigen
                             update_status = self.chroma_updater.chroma_settings.get("chroma_auto_update",
                                                                                     "Status nicht verfügbar")
                             latest_update = self.chroma_updater.chroma_settings.get("chroma_latest_update",
@@ -74,32 +95,38 @@ class TerminAl:
                             print(f"Unbekannter Befehl: {action}")
 
                 elif user_input.startswith(r"\cmd"):
+                    # Befehl an das Betriebssystem weiterleiten
                     command = user_input.split()[1:]
                     await UserFunctions.cmd(command)
 
                 elif user_input.startswith(r"\exit"):
+                    # Anwendung beenden
                     await UserFunctions.exit()
 
                 elif user_input.startswith(r"\help"):
+                    # Hilfetext anzeigen
                     await UserFunctions.help()
 
                 elif user_input.startswith(r"\info"):
+                    # Systeminformationen anzeigen
                     UserFunctions.info()
 
                 elif user_input.startswith(r"\search"):
+                    # Volltextsuche in ChromaDB durchführen
                     user_input = user_input.split(" ")
-                    seach_results = await self.chroma_retriever.fulltext_search(user_input[1:], top_k=10)
-                    print(seach_results)
+                    await self.chroma_retriever.fulltext_search(user_input[1:], top_k=10)
 
                 elif user_input.startswith(r"\clear"):
+                    # Terminal bereinigen
                     option = user_input.split(" ")
                     if len(option) > 1:
                         option = option[1]
                     else:
                         option = None
-                    await UserFunctions.clear(option)
+                    await UserFunctions.clear(option=option)
 
                 elif user_input.startswith(r"\psql"):
+                    # PostgreSQL-Datenbankverbindung herstellen
                     parts = user_input.split(" ")
                     if len(parts) >= 2:
                         self.current_user_database = await UserFunctions.psql(parts[1:])
@@ -107,36 +134,36 @@ class TerminAl:
                         print("❗ Bitte gib entweder 'list' oder einen Datenbanknamen an.")
 
                 elif user_input.startswith(r"\chromadb_collections"):
+                    # ChromaDB-Sammlungen auflisten
                     self.chroma_updater.list_collections()
 
                 elif user_input.startswith("\\"):
+                    # Unbekannter Befehl
                     print("Unbekannter Befehl. Zeige alle Befehle mit \\help")
 
                 else:
-                    """
-                    vector_context, environment_context = await asyncio.gather(
-                        self.chroma_retriever.retrieve(user_input, top_k=5, threshold=10),
-                        environment_retriever()
-                    )
-                    """
-
+                    # Schlüsselwörter aus der Benutzereingabe extrahieren
                     keywords = self.extract_keywords(user_input)
 
+                    # Kontext basierend auf dem Datenbankstatus abrufen
                     if not self.current_user_database:
+                        # Wenn keine Datenbankverbindung besteht, nur Vektor- und Umgebungskontext holen
                         vector_context, environment_context = await asyncio.gather(
-                            self.chroma_retriever.fulltext_search(keywords, top_k=5, query=True),
+                            self.chroma_retriever.fulltext_search(keywords, top_k=5),
                             environment_retriever()
                         )
                     elif self.current_user_database:
-                        postgres_context = SystemMapping.map_postgres(active_database=self.current_user_database)
-                        vector_context, environment_context = await asyncio.gather(
-                            self.chroma_retriever.fulltext_search(keywords, top_k=5, query=True),
-                            environment_retriever()
+                        # Wenn Datenbankverbindung besteht, zusätzlich PostgreSQL-Kontext holen
+                        vector_context, environment_context, postgres_context = await asyncio.gather(
+                            self.chroma_retriever.fulltext_search(keywords, top_k=5),
+                            environment_retriever(),
+                            UserFunctions.psql(user_input=["list", self.current_user_database[5]])
                         )
-                    # Remove <>, otherwise the model gets confused
+
+                    # Spitzklammern entfernen, um Verwirrung des Modells zu vermeiden
                     cleaned_user_input = self.clean_input(user_input)
 
-                    # Starte mit wichtigem Kontext (Umgebungskontext)
+                    # Prompterstellung für das Sprachmodell mit relevanten Kontextinformationen
                     full_prompt = (
                         "Nutze die folgenden Kontextinformationen, wenn sie bei der Beantwortung der Benutzerfrage hilfreich sind.\n"
                         "Falls Pfade oder Dateinamen angegeben sind, kannst du daraus Ordner ableiten (z.B. durch Entfernen von Dateinamen oder Kürzen auf relevante Teilpfade).\n"
@@ -151,51 +178,43 @@ class TerminAl:
                         f"{postgres_context if self.current_user_database else vector_context}\n"
                         "# ENDE USERPROMPT\n"
                     )
-                    ic()
-                    ic(full_prompt)
 
+                    # Anfrage an das Ollama-Modell senden
                     result = await self.ollama_client.query(prompt=full_prompt)
 
                     def fix_json_escapes(s):
-                        # Escape any stray backslashes not part of valid JSON escapes
-                        # Replace: unescaped \ → \\ unless it's already \\ or part of \"
+                        r"""
+                        Korrigiert fehlerhaft formatierte JSON-Escapes in der Zeichenkette.
+                        Ersetzt: nicht-escapte \ → \\ sofern es nicht bereits \\ oder Teil von \" ist.
+                        """
                         s = re.sub(r'(?<!\\)\\(?!["\\/bfnrtu])', r'\\\\', s)
                         return s
 
-                    # Try fixing the result string before parsing
+                    # Versuchen, die Ergebniszeichenkette vor dem Parsen zu korrigieren
                     try:
                         safe_result = fix_json_escapes(result)
                         parsed = json.loads(safe_result)
                     except json.JSONDecodeError as e:
-                        print("❗ JSON konnte nicht geparsed werden.")
-                        print("Fehlermeldung:", e)
-                        print("Antwort vom Modell:")
-                        print(result)
+                        ic() # JSON konnte nicht geparsed werden
+                        ic(e)
+                        ic("Antwort vom Modell:")
+                        ic(result)
+                        continue
 
-                    examples = json.dumps(example_dict, ensure_ascii=False)
-
-                    ic()
-                    ic(type(parsed))
-                    ic(parsed)
-
-
-
-                    examples = json.loads(examples)
-                    #result = examples.get(user_input, {})
+                    # Befehl aus der Modellantwort extrahieren
                     command = parsed.get("command", None)
 
-                    ic()
-                    ic(type(command))
-                    ic(command)
-
-                    print(command)
+                    # Benutzerentscheidung für Befehlsausführung einholen
                     if command:
                         decision = input("Befehl genehmigen oder ablehnen (J/N): ").lower()
                     else:
-                        print("Kein Befehl erhalten.")
+                        print("Keinen Befehl erhalten.")
                         continue
+
+                    # Befehl basierend auf der Benutzerentscheidung und dem Typ ausführen
                     if decision == "j":
                         if parsed["tool"] == "sql" and self.current_user_database:
+                            # SQL-Befehl mit aktiver Datenbankverbindung ausführen
                             command_list = self.current_user_database + [command]
                             await UserFunctions.cmd(command_list)
                         elif parsed["tool"] == "sql" and not self.current_user_database:
@@ -203,49 +222,51 @@ class TerminAl:
                         elif parsed["tool"] == "bash" and self.current_user_database:
                             print("Bitte von Datenbank abmelden oder reinen SQL-Befehl eingeben.")
                         elif parsed["tool"] == "bash" and not self.current_user_database:
+                            # shlex teilt den command unter berücksichtigung von Anführungszeichen
                             command_list = shlex.split(command)
-                            # Entferne "sudo" falls vorhanden (Prozess läuft schon als root)
+                            # "sudo" entfernen, falls vorhanden (Prozess läuft bereits als root)
                             command_list = [item for item in command_list if item.lower() != "sudo"]
                             await UserFunctions.cmd(command_list)
                     elif decision == "n":
                         print("Befehl wurde abgelehnt!")
                     else:
-                        print("abbruch aufgrund ungültiger Eingabe!")
-
-
-
+                        print("Abbruch aufgrund ungültiger Eingabe!")
 
         except KeyboardInterrupt:
             print("\nBeenden der Anwendung...")
         finally:
-            # Cancel all running tasks when exiting
+            # Alle laufenden Tasks beim Beenden abbrechen
             update_task.cancel()
 
-            # Also cancel manual update task if it exists and is running
-            if manual_update_task and not manual_update_task.done():
-                manual_update_task.cancel()
+            # Auch manuellen Update-Task abbrechen, falls er existiert und noch läuft
+            if self.manual_update_task and not self.manual_update_task.done():
+                self.manual_update_task.cancel()
 
-            # Wait for all tasks to be properly cancelled
+            # Warten, bis alle Tasks ordnungsgemäß abgebrochen wurden
             try:
                 await update_task
-                if manual_update_task:
-                    await manual_update_task
+                if self.manual_update_task:
+                    await self.manual_update_task
             except asyncio.CancelledError:
                 pass
 
     async def get_user_input(self):
         """
-        Non-blocking user input that doesn't block the event loop
+        Nicht-blockierende Benutzereingabe, die den Event-Loop nicht blockiert.
+        Passt die Eingabeaufforderung basierend auf dem aktuellen Datenbankstatus an.
+
+        Returns:
+            str: Die vom Benutzer eingegebene Zeichenkette
         """
         try:
-            # Build the prompt based on whether we have a current database
+            # Prompt basierend auf dem Datenbankstatus erstellen
             if self.current_user_database:
-                prompt = f"terminAl (psql) --> : "
+                prompt = f"terminAl (psql: {self.current_user_database[5]}) --> : "
             else:
                 prompt = "terminAl --> : "
 
             loop = asyncio.get_event_loop()
-            # You can pass `input` and its argument directly to run_in_executor
+            # Input-Funktion und ihr Argument direkt an run_in_executor übergeben
             user_input = await loop.run_in_executor(None, input, prompt)
             return user_input
         except (EOFError, KeyboardInterrupt):
@@ -253,16 +274,34 @@ class TerminAl:
 
     def extract_keywords(self, user_input: str) -> list[str]:
         """
-        Extracts keywords wrapped in angle brackets: <keyword>
+        Extrahiert Schlüsselwörter, die in spitzen Klammern eingeschlossen sind: <Schlüsselwort>
+
+        Args:
+            user_input: Die Benutzereingabe, die analysiert werden soll
+
+        Returns:
+            list[str]: Liste der gefundenen Schlüsselwörter
         """
         return re.findall(r"<([^<>]+)>", user_input)
 
     def clean_input(self, user_input: str) -> str:
+        """
+        Entfernt spitze Klammern aus der Benutzereingabe.
+
+        Args:
+            user_input: Die zu bereinigende Benutzereingabe
+
+        Returns:
+            str: Die bereinigte Eingabe ohne spitze Klammern
+        """
         return re.sub(r"[<>]", "", user_input)
 
 
 async def main():
-    """Main entry point for the application."""
+    """
+    Haupteinstiegspunkt für die Anwendung.
+    Erstellt und startet die TerminAl-Instanz.
+    """
     app = TerminAl()
     await app.run()
 

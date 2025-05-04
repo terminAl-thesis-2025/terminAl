@@ -1,55 +1,86 @@
-import ast, json, os
-from enum import nonmember
-
-import torch
-import chromadb
-import nltk
-from chromadb.utils import embedding_functions
-from chromadb.config import Settings
-from icecream import ic
+# Standardbibliotheken
+import ast
+import json
+import os
 from typing import List, Union
+
+# Externe Bibliotheken
+import chromadb
+from chromadb.config import Settings
+from chromadb.utils import embedding_functions
 from dotenv import load_dotenv
+from icecream import ic
+import nltk
+from nltk.corpus import stopwords
+import torch
 
+# Versuch, die deutschen Stopwörter zu laden, falls nicht vorhanden werden sie heruntergeladen
 try:
-    from nltk.corpus import stopwords
-    stopwords.words("german")  # Try to access it
+    stopwords.words("german")  # Versuche darauf zuzugreifen
 except LookupError:
-    import nltk
     nltk.download('stopwords')
-    from nltk.corpus import stopwords  # Re-import after download
-    stopwords.words("german")  # Now this should work
+    from nltk.corpus import stopwords  # Erneut importieren nach dem Download
 
+    stopwords.words("german")  # Jetzt sollte es funktionieren
 
+# Lade Umgebungsvariablen aus der .env-Datei
 load_dotenv("./settings/.env")
 terminal_path = os.getenv("TERMINAL_PATH")
 
 
 class AsyncChromaDBRetriever:
+    """
+    Eine Klasse zur asynchronen Abfrage einer ChromaDB-Datenbank mit semantischen Embeddings.
+    Ermöglicht semantische Suche und Volltextsuche in gespeicherten Dokumenten.
+    """
+
     def __init__(self):
+        """
+        Initialisiert den Retriever mit Einstellungen aus der Konfigurationsdatei.
+        Richtet die Embedding-Funktion mit einem multilingualen Modell ein.
+        """
+        # Lade Einstellungen aus der Konfigurationsdatei
         self.settings = json.load(open(terminal_path + "settings/settings.json"))
         self.chroma_settings = self.settings.get("chroma_settings", {})
 
-        # Set up device
+        # Stelle das Gerät ein (CUDA wenn verfügbar, sonst CPU)
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
-        # Set up embedding function
+        # Erstelle die Embedding-Funktion mit einem multilingualen Modell
         self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name="intfloat/multilingual-e5-small",
+            model_name=self.chroma_settings.get("model_name", "intfloat/multilingual-e5-small"),
             cache_folder=self.settings["model_cache_directory"],
             device=self.device,
         )
 
-        # ChromaDB Client Set up moved functions, to get current Client!
+        # Hinweis: ChromaDB-Client wird in den Methoden erstellt, nicht hier in __init__,
+        # um immer den aktuellen Client zu erhalten
 
     async def retrieve(self, user_input: str, top_k=2, threshold=0.3):
+        """
+        Führt eine semantische Suche in der Datenbank durch, basierend auf der Benutzereingabe.
 
-        # Set up ChromaDB client (not in def __init__() because updating changes the client!
+        Args:
+            user_input: Der Eingabetext des Benutzers
+            top_k: Anzahl der zurückzugebenden Ergebnisse
+            threshold: Schwellenwert für die Relevanz (aktuell nicht verwendet)
+
+        Returns:
+            Formatierter Text mit den gefundenen Dokumenten oder eine Fehlermeldung
+
+        ! Wichtig: Diese Funktion wird im aktuellen Proof of Concept aufgrund der unzureichenden Qualität
+        des Retrievals des Embedding-Modells nicht verwendet. Größere Embedding-Modelle bringen für diesen
+        Use Case etwas bessere Qualität, rechtfertigen aber die Systembelastung (VRAM) nicht. Es sollte ein
+        Embedding-Modell für diesen Use Case finetuned werden, damit ausreichende Qualität mit vertretbarer
+        Systembelastung erreicht wird.
+        """
+        # Erstelle den ChromaDB-Client (nicht in __init__, da bei Updates der Client aktualisiert wird)
         client = chromadb.PersistentClient(
             path=self.chroma_settings["chromadb_path"],
             settings=Settings(anonymized_telemetry=False)
         )
 
-        # Connect to the Main_Collection
+        # Verbinde mit Main Collection
         collection_name = "Main_Collection"
         try:
             collection = client.get_collection(
@@ -57,25 +88,26 @@ class AsyncChromaDBRetriever:
                 embedding_function=self.embedding_function
             )
         except Exception as e:
+            ic()
+            ic(e)
             collection = None
 
         if not collection:
             return "Keine Verbindung zur Datenbank."
 
         try:
-            # Query the collection
+            # Abfrage der Sammlung mit dem semantischen Embedding des Benutzertexts
             results = collection.query(
                 query_texts=[user_input],
                 n_results=top_k,
                 include=["documents", "metadatas"],
             )
 
-            ic()
-            ic(results)
-
+            # Überprüfe, ob Ergebnisse vorhanden sind
             if not results or not results.get("documents") or not any(results["documents"]):
                 return "Keine relevanten Informationen gefunden."
 
+            # Formatiere die Ergebnisse, wenn vorhanden
             if results.get("documents") and results.get("ids"):
                 formatted_context = ""
                 for doc_list, id_list in zip(results["documents"], results["ids"]):
@@ -88,15 +120,24 @@ class AsyncChromaDBRetriever:
         except Exception as e:
             return f"Fehler bei der Abfrage der ChromaDB: {str(e)}"
 
-    async def fulltext_search(self, keywords: Union[str, List[str]], top_k: int = 5, query=False):
+    async def fulltext_search(self, keywords: Union[str, List[str]], top_k: int = 5):
+        """
+        Führt eine Volltextsuche in der Datenbank durch, basierend auf Schlüsselwörtern.
 
-        # Set up ChromaDB client (not in def __init__() because updating changes the client!
+        Args:
+            keywords: Ein Schlüsselwort oder eine Liste von Schlüsselwörtern
+            top_k: Anzahl der zurückzugebenden Ergebnisse
+
+        Returns:
+            Formatierter Text mit den gefundenen Dokumenten
+        """
+        # Erstelle den ChromaDB-Client (nicht in __init__, da bei Updates der Client aktualisiert wird)
         client = chromadb.PersistentClient(
             path=self.chroma_settings["chromadb_path"],
             settings=Settings(anonymized_telemetry=False)
         )
 
-        # Connect to the Main_Collection
+        # Verbinde mit der Hauptsammlung
         collection_name = "Main_Collection"
         try:
             collection = client.get_collection(
@@ -104,59 +145,64 @@ class AsyncChromaDBRetriever:
                 embedding_function=self.embedding_function
             )
         except Exception as e:
+            ic()
+            ic(e)
             collection = None
 
         if not collection:
             return "Keine Verbindung zur Datenbank."
 
+        # Konvertiere einzelnes Schlüsselwort zu Liste, wenn nötig
         if isinstance(keywords, str):
             keywords = [keywords]
 
-        keywords = [kw.lower() for kw in keywords if kw.strip()]  # Leere Strings entfernen
-        # Filter Natural Language Query only
-        if query:
-            keywords = [kw for kw in keywords if kw not in stopwords.words("german")]
+        # Bereinige die Schlüsselwörter: zu Kleinbuchstaben konvertieren und leere entfernen
+        keywords = [kw.lower() for kw in keywords if kw.strip()]
 
         if not keywords:
             return "Bitte gib mindestens ein Suchwort an."
 
-        ic()
-        ic(keywords)
-
         try:
-            # Je nach Anzahl der Keywords unterschiedlich bauen
+            # Je nach Anzahl der Keywords und Abfrageart unterschiedliche Bedingungen bauen
             if len(keywords) == 1:
+                # Bei einem Schlüsselwort: einfacher Textvergleich
                 where_document = {"$contains": keywords[0]}
-            elif len(keywords) > 1 and query:
+            elif len(keywords) > 1:
+                # Bei mehreren Schlüsselwörtern: OR-Verknüpfung
                 where_document = {"$or": [{"$contains": kw} for kw in keywords]}
-            elif len(keywords) > 1 and not query:
-                where_document = {"$and": [{"$contains": kw} for kw in keywords]}
 
-            ic()
-            ic(where_document)
-
+            # Abfrage der Sammlung mit den Bedingungen
             results = collection.query(
-                query_texts="",
+                query_texts="",  # Kein semantischer Vergleich, nur Textfilterung
                 where_document=where_document,
                 n_results=top_k,
                 include=["documents", "metadatas"]
             )
 
-            # 1. Format to string
+            # Formatiere die Ergebnisse als Text
             formatted_text = self._format_context(results)
 
-            if query:
-                return formatted_text
-            else:
-                # 2. Parse and print nicely
-                _format_search_results(formatted_text)
-                return None
-            return None
+            # Zeige formatierte Ergebnisse direkt an
+            self._format_search_results(formatted_text)
+
+            # Für die Verwendung durch das LLM (wenn Funktionsabruf über die Query-Funktion)
+            return formatted_text
 
         except Exception as e:
+            ic()
+            ic(e)
             return f"Fehler bei der Volltextsuche: {str(e)}"
 
     def _format_context(self, results):
+        """
+        Hilfsmethode zum Formatieren der Abfrageergebnisse.
+
+        Args:
+            results: Die Abfrageergebnisse von ChromaDB
+
+        Returns:
+            Formatierter Text mit den gefundenen Dokumenten
+        """
         context_text = ""
         if results and results.get("documents"):
             for doc_list, id_list in zip(results["documents"], results["ids"]):
@@ -165,35 +211,37 @@ class AsyncChromaDBRetriever:
 
         return context_text if context_text else "Keine relevanten Informationen gefunden."
 
-def _format_search_results(results_text: str):
-    """
-    Parses the search results text from ChromaDB and prints each list item individually,
-    or prints the content directly if it's not a list.
-    """
-    for block in results_text.strip().split("\n\n"):
-        lines = block.splitlines()
-        id_line = None
-        content_line = None
 
-        for line in lines:
-            if line.startswith("ID: "):
-                id_line = line
-            elif line.startswith("Inhalt: "):
-                content_line = line.replace("Inhalt: ", "").strip()
+    def _format_search_results(self, results_text: str):
+        """
+        Verarbeitet und zeigt die Suchergebnisse aus ChromaDB an,
+        ohne die IDs anzuzeigen. Bei Listen werden die einzelnen Elemente separat angezeigt.
 
-        if id_line and content_line:
-            print(id_line)
+        Args:
+            results_text: Formatierter Text aus ChromaDB
+        """
+        for block in results_text.strip().split("\n\n"):
+            lines = block.splitlines()
+            content_line = None
 
-            # Try to parse content
-            try:
-                parsed_content = ast.literal_eval(content_line)
-                if isinstance(parsed_content, list):
-                    for item in parsed_content:
-                        print(f" - {item}")
-                else:
-                    print(parsed_content)
-            except Exception:
-                # If parsing fails, just print raw
-                print(content_line)
+            # Extrahiere nur den Inhalt aus dem Block (ID wird ignoriert)
+            for line in lines:
+                if line.startswith("Inhalt: "):
+                    content_line = line.replace("Inhalt: ", "").strip()
 
-            print()  # Add a newline for separation
+            if content_line:
+                # Versuche, den Inhalt zu parsen (für Listen)
+                try:
+                    parsed_content = ast.literal_eval(content_line)
+                    if isinstance(parsed_content, list):
+                        # Zeige Listenelemente einzeln an
+                        for item in parsed_content:
+                            print(f" - {item}")
+                    else:
+                        # Normaler Inhalt
+                        print(parsed_content)
+                except Exception:
+                    # Wenn Parsing fehlschlägt, zeige Rohtext an
+                    print(content_line)
+
+                print()  # Füge eine Leerzeile zur Trennung hinzu

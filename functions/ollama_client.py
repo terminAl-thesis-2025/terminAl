@@ -1,52 +1,67 @@
-import asyncio, json, os
-from ollama import AsyncClient
-from dotenv import load_dotenv
+# Standardbibliotheken
+import json
+import os
 
+# Externe Bibliotheken
+from dotenv import load_dotenv
+from icecream import ic
+from ollama import AsyncClient
+
+# Interne Module
 from settings.system_prompts import system_prompt
 
+# Lade Umgebungsvariablen aus der .env-Datei
 load_dotenv("./settings/.env")
 terminal_path = os.getenv("TERMINAL_PATH")
 
 
 class OllamaClient:
     """
-    A class to handle interactions with the Ollama API.
-    This provides a clean interface for querying the LLM and processing responses.
+    Eine Klasse zur Verwaltung der Interaktionen mit der Ollama-API.
+    Diese bietet eine Schnittstelle für Anfragen an das LLM und die Verarbeitung von Antworten.
     """
 
-    def __init__(self, host=None, model=None):
-        """Initialize the Ollama client with configuration"""
+    def __init__(self):
+        """
+        Initialisiere den Ollama-Client mit Konfiguration
+        """
+        # Lade Einstellungen aus der Konfigurationsdatei
         self.settings = json.load(open(terminal_path + "settings/settings.json"))
+        # Extrahiere Ollama-spezifische Einstellungen
         self.ollama_settings = self.settings.get("ollama_settings", {})
+        # Setze Host-URL mit Fallback auf localhost
         self.host = self.ollama_settings.get("ollama_url", "http://localhost:11434")
+        # Setze Modellname mit Fallback auf Standardmodell
         self.model = self.ollama_settings.get("ollama_model", "llama3.2:3b-instruct-q4_K_M")
+        # Erstelle einen asynchronen Client für die Kommunikation mit Ollama
         self.client = AsyncClient(host=self.host)
+        # Setze den System-Prompt für Kontext
         self.system_prompt = system_prompt
 
     async def query(self, prompt, system_context=None, temperature=0.1):
         """
-        Send a query to the Ollama model and get a response.
+        Sende eine Anfrage an das Ollama-Modell und erhalte eine Antwort.
 
         Args:
-            prompt (str): The user's query
-            system_context (str, optional): System instructions for the model
-            temperature (float, optional): Creativity parameter (0.0-1.0)
+            prompt (str): Die Anfrage des Benutzers
+            system_context (str, optional): Systemanweisungen für das Modell
+            temperature (float, optional): Kreativitätsparameter (0.0-1.0)
 
         Returns:
-            str: The model's response
+            str: Die Antwort des Modells
         """
         try:
-            # Prepare the message structure
+            # Bereite die Nachrichtenstruktur vor
             messages = [{"role": "system", "content": self.system_prompt}]
 
-            # Add system message if provided
+            # Füge Systemnachricht hinzu, falls vorhanden
             if system_context:
                 messages.append({"role": "system", "content": f"{system_context}"})
 
-            # Add user message
+            # Füge Benutzernachricht hinzu
             messages.append({"role": "user", "content": prompt})
 
-            # Get response from model
+            # Erhalte Antwort vom Modell
             response = await self.client.chat(
                 model=self.model,
                 messages=messages,
@@ -54,50 +69,14 @@ class OllamaClient:
                 options={"temperature": temperature}
             )
 
-            # Extract the assistant's message
+            # Extrahiere die Nachricht des Modells
             if response and "message" in response and "content" in response["message"]:
                 return response["message"]["content"]
             else:
                 return "Keine verwertbare Antwort erhalten."
 
         except Exception as e:
+            # Gib Fehlermeldung zurück, falls ein Problem auftritt
+            ic()
+            ic(e)
             return f"Fehler bei der Kommunikation mit Ollama: {str(e)}"
-    '''
-    def extract_command(self, response):
-        """
-        Extract the most likely command from an LLM response.
-
-        Args:
-            response (str): The LLM's response text
-
-        Returns:
-            str or None: The extracted command or None if no command found
-        """
-        # Split response into lines and clean them
-        command_lines = [line.strip() for line in response.split("\n")
-                         if line.strip() and not line.strip().startswith(("1.", "2.", "3."))]
-
-        # Look for lines that look like commands (start with $ or don't have punctuation)
-        potential_commands = [line.lstrip("$ ") for line in command_lines
-                              if line.startswith("$") or not any(c in line for c in [":", ".", "?"])]
-
-        # Return the first potential command if any were found
-        return potential_commands[0] if potential_commands else None
-
-    def format_context(self, context_results):
-        """
-        Format ChromaDB results into a text context for the LLM.
-
-        Args:
-            context_results (dict): Results from ChromaDB query
-
-        Returns:
-            str: Formatted context text
-        """
-        context_text = ""
-        if context_results and "documents" in context_results and context_results["documents"]:
-            # Format paths and contents for the LLM
-            for i, (doc, path_id) in enumerate(zip(context_results["documents"], context_results["ids"])):
-                context_text += f"Path: {path_id}\nContents: {doc}\n\n"
-
-        return context_text if context_text else "Keine relevanten Systeminformationen gefunden."'''

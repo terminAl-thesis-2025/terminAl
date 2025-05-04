@@ -1,31 +1,52 @@
-import json, os, subprocess, sys
-from divers.ascii_art import terminAl_ascii
+# Standardbibliotheken
+import json
+import os
+import subprocess
+import sys
+
+# Externe Bibliotheken
 from dotenv import load_dotenv
 from icecream import ic
 
+# Interne Module
+from divers.ascii_art import terminAl_ascii
+
+# Lade Umgebungsvariablen aus der .env-Datei
 load_dotenv("./settings/.env")
+# Hole den Pfad zur Terminal-Anwendung aus den Umgebungsvariablen
 terminal_path = os.getenv("TERMINAL_PATH")
 
 
 class UserFunctions:
     """
-    Class containing utility functions for the Terminal app.
+    Klasse, die Hilfsfunktionen für die Terminal-Anwendung enthält.
     """
 
     @classmethod
     async def exit(cls):
+        """
+        Beendet die Anwendung mit einer Abschiedsnachricht.
+        """
         print("OK, bye...")
         sys.exit(0)
 
     @classmethod
     async def help(cls):
+        """
+        Zeigt eine Hilfeübersicht mit allen verfügbaren Befehlen an.
+        """
         print("Verfügbare Befehle:")
+        print("  Eingabe ohne \\  - Löst eine Anfrage an das KI-Modell aus.")
+        print("                     Es können Keywords in <> angegeben werden, ")
+        print("                     was eine Suche nach diesen Keywords in der ")
+        print("                     Vektordatenbank auslöst")
         print("  \\exit           - Beendet die Anwendung")
         print("  \\help           - Zeigt diese Hilfe an")
         print("  \\info           - Zeigt Informationen zur Anwendung")
         print("  \\cmd <Befehl>   - Führt einen Shell-Befehl direkt aus")
         print("     cd terminAl  - Zurück zur Applikation")
         print("  \\clear          - Leert den Bildschirm/Terminal")
+        print("     logo          - Leert den Bildschirm/Terminal, und zeigt das logo an")
         print("  \\update         - DB-Update Befehle:")
         print("     on           - Aktiviert automatische DB-Updates")
         print("     off          - Deaktiviert automatische DB-Updates")
@@ -33,12 +54,18 @@ class UserFunctions:
         print("     status       - Zeigt den aktuellen Status der DB-Updates")
         print("  \\psql           - PostgreSQL Befehle:")
         print("     list         - Listet verfügbare Datenbanken")
+        print("     list dbs     - Listet ebenfalls alle verfügbaren Datenbanken")
+        print("     list <DB>    - Listet alle Tabellen in der angegebenen Datenbank")
         print("     login <DB>   - Verbindet zu einer angegebenen Datenbank")
         print("     switch <DB>  - Wechselt zu einer anderen Datenbank")
         print("     logout       - Beendet die Datenbankverbindung")
 
     @classmethod
     def info(cls):
+        """
+        Zeigt allgemeine Informationen über die Anwendung und ihre Konfiguration an.
+        Liest die Einstellungen aus der settings.json-Datei.
+        """
         settings = json.load(open(terminal_path + "settings/settings.json"))
         chroma_settings = settings.get("chroma_settings", {})
         ollama_settings = settings.get("ollama_settings", {})
@@ -56,48 +83,61 @@ class UserFunctions:
 
     @classmethod
     async def cmd(cls, command):
+        """
+        Führt einen Shell-Befehl aus.
+
+        Args:
+            command: Liste von Befehlsargumenten oder ein Shell-Befehl
+
+        Returns:
+            bool: True bei erfolgreicher Ausführung, False bei Fehlern
+        """
         try:
+            # Prüfe, ob ein Befehl angegeben wurde
             if not command:
-                print("No command provided.")
+                ic()
+                ic("Kein Befehl vorhanden.")
                 return False
 
-            # Handle 'cd' manually
+            # Behandlung des 'change directory'-Befehls (wechselt das Verzeichnis)
             if command[0] == "cd":
                 if len(command) < 2:
-                    print("No path provided for cd.")
+                    ic()
+                    ic("Kein Zielpfad verfügbar.")
                     return False
 
                 path = command[1]
 
-                # Special case: cd terminAl
+                # Sonderfall: cd terminAl (Wechsel zurück zum terminAl-Ordner)
                 if path.lower() == "terminal":
-                    project_root = os.path.dirname(os.path.abspath(__file__))  # This points to /functions
-                    project_root = os.path.abspath(os.path.join(project_root, ".."))  # Go one level up to project root
+                    project_root = os.path.dirname(os.path.abspath(__file__))  # Zeigt auf /functions
+                    project_root = os.path.abspath(os.path.join(project_root, ".."))  # Eine Ebene hoch zum Projektroot
                     os.chdir(project_root)
-                    print(f"Changed directory to project root: {os.getcwd()}")
+                    print(f"Wechsel zum terminAl-Ordner: {os.getcwd()}")
                     return True
 
-                # Regular cd behavior
+                # Normales cd-Verhalten
                 try:
                     os.chdir(path)
-                    print(f"Changed directory to {os.getcwd()}")
+                    print(f"Wechsel zum Ordner:{os.getcwd()}")
                     return True
                 except FileNotFoundError:
-                    print(f"No such directory: {path}")
+                    ic()
+                    ic(f"Ordner existiert nicht: {path}")
                     return False
                 except Exception as e:
-                    print(f"Failed to change directory: {str(e)}")
+                    ic()
+                    ic(f"Fehler beim Wechseln zum Ordner: {str(e)}")
                     return False
 
-            ic()
-            ic(command)
-
-            use_shell = any(x in command for x in ["|", ">", "&&", ";"])  # Detect shell operators
+            # Prüfe, ob Shell-Operatoren verwendet werden
+            use_shell = any(x in command for x in ["|", ">", "&&", ";"])
             if use_shell:
-                popen_input = " ".join(command)  # string for shell
+                popen_input = " ".join(command)  # String für die Shell
             else:
-                popen_input = command  # list for direct execution
+                popen_input = command  # Liste für direkte Ausführung
 
+            # Starte den Prozess
             process = subprocess.Popen(
                 popen_input,
                 shell=use_shell,
@@ -106,7 +146,7 @@ class UserFunctions:
                 text=True
             )
 
-            # Read stdout live
+            # Lese stdout live (Zeile für Zeile)
             while True:
                 line = process.stdout.readline()
                 if line == '' and process.poll() is not None:
@@ -116,44 +156,60 @@ class UserFunctions:
 
             return_code = process.wait()
 
+            # Fehlerbehandlung
             if return_code != 0:
                 stderr = process.stderr.read()
                 if stderr:
-                    print(f"Error: {stderr.strip()}")
+                    ic()
+                    ic(f"Fehler: {stderr.strip()}")
                 else:
-                    print(f"Error: Command exited with code {return_code}")
+                    ic()
+                    ic(f"Fehler: Exitcode: {return_code}")
 
             return return_code == 0
 
         except Exception as e:
-            print(f"Exception occurred: {str(e)}")
+            ic()
+            ic(f"Ausnahme eingetreten: {str(e)}")
             return False
 
     @classmethod
     async def psql(cls, user_input=None):
+        """
+        Verwaltet PostgreSQL-Datenbankzugriffe.
+
+        Args:
+            user_input: Liste mit Unterbefehl und Parametern
+
+        Returns:
+            None oder Liste mit Befehl für weitere Verarbeitung
+        """
         settings = json.load(open(terminal_path + "settings/settings.json"))
         tool_settings = settings.get("tools", {})
 
         if not settings:
-            print("Einstellungen wurden nicht geladen.")
+            ic()
+            ic("Einstellungen wurden nicht geladen.")
             return None
 
         try:
+            # PostgreSQL-Benutzer und Datenbankliste aus den Einstellungen holen
             username = tool_settings.get('postgres').get('username')
             databases = tool_settings.get('postgres').get('databases')
 
+            # Befehl "list" - zeigt entweder Datenbanken oder Tabellen in einer DB an
             if user_input[0] == "list":
-                # If only "list" or "list dbs" --> show databases
+                # Wenn nur "list" oder "list dbs" --> zeige Datenbanken
                 if len(user_input) == 1 or (len(user_input) == 2 and user_input[1].lower() == "dbs"):
                     print("Verfügbare Datenbanken:")
                     for db in databases:
                         print(f"  - {db}")
                     return None
-                # If "list <dbname>" --> list tables inside that db
+                # Wenn "list <dbname>" --> Liste Tabellen in dieser DB auf
                 elif len(user_input) == 2 and user_input[1] in databases:
                     db_name = user_input[1]
-                    print(f"Starte Abfrage der Tabellen für Datenbank '{db_name}'...")
 
+                    # Führe psql mit \dt+ Befehl aus, um Tabellen anzuzeigen
                     command = ["sudo", "-u", username, "psql", "-d", db_name, "-c", r"\dt+"]
                     process = subprocess.Popen(
                         command,
@@ -166,42 +222,53 @@ class UserFunctions:
 
                     if process.returncode == 0:
                         print(stdout)
+                        return stdout
                     else:
-                        print(f"Fehler beim Abfragen der Tabellen:\n{stderr}")
+                        ic()
+                        ic(f"Fehler beim Abfragen der Tabellen:\n{stderr}")
 
                     return None
                 else:
-                    print(
-                        "Ungültige Eingabe für 'list'. Entweder nur 'list', 'list dbs' oder 'list <DB-Name>' angeben.")
+                    ic()
+                    ic("Ungültige Eingabe für 'list'. Entweder nur 'list', 'list dbs' oder 'list <DB-Name>' angeben.")
                     return None
 
+            # Befehl "login" - Verbindung zu einer Datenbank herstellen
             elif user_input[0] == "login" and user_input[1] in databases:
                 print(f"Starte psql als Benutzer '{username}' auf Datenbank '{user_input[1]}'...")
                 return ["sudo", "-u", username, "psql", "-d", user_input[1], "-c"]
+            # Befehl "switch" - Wechsel zu einer anderen Datenbank
             elif user_input[0] == "switch" and user_input[1] in databases:
                 print(f"Starte psql als Benutzer '{username}' auf Datenbank '{user_input[1]}'...")
                 return ["sudo", "-u", username, "psql", "-d", user_input[1], "-c"]
+            # Befehl "logout" - Datenbankverbindung beenden
             elif user_input[0] == "logout":
                 print("Beendet")
                 return None
             else:
-                print(
-                    "Ungültige Eingabe. Bitte 'list', 'list dbs', 'list <DB-Name>' oder eine gültige Datenbank angeben.")
+                ic()
+                ic("Ungültige Eingabe. Bitte 'list', 'list dbs', 'list <DB-Name>' oder eine gültige Datenbank angeben.")
                 return None
 
         except Exception as e:
-            print(f"Fehler beim Starten des psql Logins: {str(e)}")
+            ic()
+            ic(f"Fehler beim Starten des psql Logins: {str(e)}")
             return None
 
     @classmethod
     async def clear(cls, option):
+        """
+        Leert den Bildschirm/Terminal und zeigt optional das Logo an.
+
+        Args:
+            option: Wenn "logo", wird das terminAl ASCII-Art Logo angezeigt
+        """
+        # Führe den clear-Befehl aus, um den Bildschirm zu leeren
         subprocess.run(
             ["clear"],
             capture_output=False,
             text=True
         )
+        # Wenn die Option "logo" angegeben wurde, zeige das ASCII-Art Logo
         if option == "logo":
             print(terminAl_ascii)
-
-
-
