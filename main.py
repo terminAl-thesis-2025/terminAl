@@ -16,7 +16,7 @@ from functions.userfunctions import UserFunctions
 from functions.async_chromadb_updater import AsyncChromaDBUpdater
 from functions.async_chromadb_retriever import AsyncChromaDBRetriever
 from functions.async_environment_retriever import environment_retriever
-from divers.ascii_art import terminAl_ascii
+from functions.terminal_guard import TerminAlGuard
 
 # Umgebungsvariablen aus .env Datei laden
 load_dotenv("./settings/.env")
@@ -41,6 +41,7 @@ class TerminAl:
         self.chroma_retriever = AsyncChromaDBRetriever()  # Komponente für ChromaDB-Abfragen
         self.current_user_database = None  # Aktuelle Datenbankverbindung des Benutzers
         self.manual_update_task = None  # Task für manuelles Update initialisieren
+        self.guard = TerminAlGuard()
 
     async def check(self):
         """
@@ -53,7 +54,7 @@ class TerminAl:
         """
         Hauptausführungsroutine, die die Benutzeroberfläche startet und Eingaben verarbeitet.
         """
-        await UserFunctions.clear(option=True)  # Terminal bereinigen
+        await UserFunctions.clear(option="logo")  # Terminal bereinigen
 
         print("Willkommen bei terminAl!\nZeige Benutzerhandbuch mit: \\help")
 
@@ -182,17 +183,10 @@ class TerminAl:
                     # Anfrage an das Ollama-Modell senden
                     result = await self.ollama_client.query(prompt=full_prompt)
 
-                    def fix_json_escapes(s):
-                        r"""
-                        Korrigiert fehlerhaft formatierte JSON-Escapes in der Zeichenkette.
-                        Ersetzt: nicht-escapte \ → \\ sofern es nicht bereits \\ oder Teil von \" ist.
-                        """
-                        s = re.sub(r'(?<!\\)\\(?!["\\/bfnrtu])', r'\\\\', s)
-                        return s
 
                     # Versuchen, die Ergebniszeichenkette vor dem Parsen zu korrigieren
                     try:
-                        safe_result = fix_json_escapes(result)
+                        safe_result = self.fix_json_escapes(result)
                         parsed = json.loads(safe_result)
                     except json.JSONDecodeError as e:
                         ic() # JSON konnte nicht geparsed werden
@@ -202,8 +196,36 @@ class TerminAl:
                         continue
 
                     # Befehl aus der Modellantwort extrahieren
-                    command = parsed.get("command", None)
+                    command = parsed.get("command")
+                    risk_level = parsed.get("risk_level")
+                    detailed_description = parsed.get("detailed_description")
 
+                    # Beende Iteration wenn kein Befehl vorhanden ist
+                    if not command:
+                        ic()
+                        ic("Keinen Befehl vom Modell erhalten.")
+                        continue
+
+                    # Warnung wenn kein risk_level angegeben wurde
+                    if risk_level is None:
+                        ic()
+                        ic("Warnung: Modell hat kein risk_level zurückgeliefert.")
+                    else:
+                        # Erst den Guard prüfen
+                        try:
+                            await self.guard.check(command, risk_level)  # Zeigt Warnung bei Abweichung
+                        except Exception as e:
+                            ic()
+                            ic(f"Fehler bei der Überprüfung durch den Guard: {e}")
+                            continue
+
+                    # Danach Informationen für den Benutzer anzeigen
+                    print("\n--- Vorschlag vom Modell ---")
+                    print(f"🖥️  Befehl                : {command}")
+                    print(f"🛡️  Risikoeinschätzung    : {risk_level}")
+                    if detailed_description:
+                        print(f"ℹ️  Beschreibung      : {detailed_description}")
+                    print("----------------------------")
                     # Benutzerentscheidung für Befehlsausführung einholen
                     if command:
                         decision = input("Befehl genehmigen oder ablehnen (J/N): ").lower()
@@ -295,6 +317,14 @@ class TerminAl:
             str: Die bereinigte Eingabe ohne spitze Klammern
         """
         return re.sub(r"[<>]", "", user_input)
+
+    def fix_json_escapes(self, s):
+        r"""
+        Korrigiert fehlerhaft formatierte JSON-Escapes in der Zeichenkette.
+        Ersetzt: nicht-escapte \ → \\ sofern es nicht bereits \\ oder Teil von \" ist.
+        """
+        s = re.sub(r'(?<!\\)\\(?!["\\/bfnrtu])', r'\\\\', s)
+        return s
 
 
 async def main():
