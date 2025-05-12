@@ -1,0 +1,34 @@
+services:
+  # TerminAl-Testumgebung
+  app:
+    image: terminal-app:latest    # Nutzt bestehendes Image falls vorhanden ...
+    build:                        # ... ansonsten wird es neu gebildet
+      context: .
+      dockerfile: Dockerfile
+    container_name: terminal-app
+    volumes:
+      - ./model_cache:/app/model_cache        # Keep host-mounted volume
+      - ./settings:/app/settings              # Keep host-mounted volume
+      - persistent_database:/app/database     # Named volume for database
+      - ./.env:/app/.env                      # Keep host-mounted volume
+      - ./divers/testkonzept:/usertest        # Mount testkonzept to /usertest
+
+    environment:
+      - OLLAMA_URL=http://host.docker.internal:11434  # Points to the host machine
+      - TERMINAL_PATH=/app/
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    stdin_open: true
+    tty: true
+    command: ["python", "main.py"]
+    # For Linux hosts, you might need to add extra_hosts to use host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  persistent_database:  # Named volume for database persistence

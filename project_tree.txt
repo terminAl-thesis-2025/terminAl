@@ -1,62 +1,214 @@
 .
 ├── database
+│   ├── __pycache__
+│   │   └── ascii_art.cpython-312.pyc
 │   ├── system_tree.json
 │   └── vector_db
-│       ├── 1076de9e-54ed-44b8-89e9-23aa0d613879
+│       ├── 11dfaeb1-fb7e-4d5e-b1bc-aa04965e4698
+│       │   ├── data_level0.bin
+│       │   ├── header.bin
+│       │   ├── length.bin
+│       │   └── link_lists.bin
+│       ├── 193a7405-3304-44d2-bb4a-4c48adf0a051
+│       │   ├── data_level0.bin
+│       │   ├── header.bin
+│       │   ├── length.bin
+│       │   └── link_lists.bin
+│       ├── 33349206-d56e-4f40-bb87-44f7ec44da87
+│       │   ├── data_level0.bin
+│       │   ├── header.bin
+│       │   ├── length.bin
+│       │   └── link_lists.bin
+│       ├── 494b0871-18a8-48e3-8370-f78335342c0a
 │       │   ├── data_level0.bin
 │       │   ├── header.bin
 │       │   ├── index_metadata.pickle
 │       │   ├── length.bin
 │       │   └── link_lists.bin
-│       └── chroma.sqlite3
-├── functions
-│   ├── chromadb_client.py
+│       ├── 4e4678bf-ca42-4231-8df3-e85e7fe4b259
+│       │   ├── data_level0.bin
+│       │   ├── header.bin
+│       │   ├── index_metadata.pickle
+│       │   ├── length.bin
+│       │   └── link_lists.bin
+│       ├── 4eab65d8-f33c-43b4-917d-53b7bb6d89ea
+│       │   ├── data_level0.bin
+│       │   ├── header.bin
+│       │   ├── length.bin
+│       │   └── link_lists.bin
+│       ├── 6cfbf2b3-aae6-4b62-8b7b-1bf0115fa924
+│       │   ├── data_level0.bin
+│       │   ├── header.bin
+│       │   ├── length.bin
+│       │   └── link_lists.bin
+│       ├── 889b6edd-4703-47dd-a95a-5c41b897cd3a
+│       │   ├── data_level0.bin
+│       │   ├── header.bin
+│       │   ├── index_metadata.pickle
+│       │   ├── length.bin
+│       │   └── link_lists.bin
+│       ├── a2d4ad8e-efc1-40c6-b5fb-736a163135ac
+│       │   ├── data_level0.bin
+│       │   ├── header.bin
+│       │   ├── length.bin
+│       │   └── link_lists.bin
+│       ├── abe5e8a9-690a-49cf-9e75-d86bcaafdada
+│       │   ├── data_level0.bin
+│       │   ├── header.bin
+│       │   ├── index_metadata.pickle
+│       │   ├── length.bin
+│       │   └── link_lists.bin
+│       ├── b38c5947-1c75-4608-9e5d-dba46ada92df
+│       │   ├── data_level0.bin
+│       │   ├── header.bin
+│       │   ├── length.bin
+│       │   └── link_lists.bin
+│       ├── ca05286e-f6b0-47a2-9d28-cf3a2e673dcf
+│       │   ├── data_level0.bin
+│       │   ├── header.bin
+│       │   ├── length.bin
+│       │   └── link_lists.bin
+│       ├── chroma.sqlite3
+│       ├── d194d467-cd5a-4778-be00-576a576a59f9
+│       │   ├── data_level0.bin
+│       │   ├── header.bin
+│       │   ├── index_metadata.pickle
+│       │   ├── length.bin
+│       │   └── link_lists.bin
+│       ├── da6d76e6-8bf1-4aba-8231-e318b3cf1e66
+│       │   ├── data_level0.bin
+│       │   ├── header.bin
+│       │   ├── index_metadata.pickle
+│       │   ├── length.bin
+│       │   └── link_lists.bin
+│       └── e1bea815-cd7c-47cf-b02d-f19af5dd2c91
+│           ├── data_level0.bin
+│           ├── header.bin
+│           ├── index_metadata.pickle
+│           ├── length.bin
+│           └── link_lists.bin
+├── divers
+│   ├── ascii_art.py
 │   ├── __pycache__
-│   │   ├── chromadb_client.cpython-312.pyc
-│   │   └── system_mapping.cpython-312.pyc
-│   └── system_mapping.py
+│   │   ├── ascii_art.cpython-312.pyc
+│   │   └── example_responses.cpython-312.pyc
+│   └── testkonzept
+│       └── test.txt
+├── docker-compose.yml
+├── Dockerfile
+├── Dockerfile.txt
+├── example.env
+├── functions
+│   ├── async_chromadb_retriever.py
+│   ├── async_chromadb_updater.py
+│   ├── async_environment_retriever.py
+│   ├── ollama_client.py
+│   ├── __pycache__
+│   │   ├── async_chromadb_retriever.cpython-312.pyc
+│   │   ├── async_chromadb_updater.cpython-312.pyc
+│   │   ├── async_environment_retriever.cpython-312.pyc
+│   │   ├── ollama_client.cpython-312.pyc
+│   │   ├── system_mapping.cpython-312.pyc
+│   │   ├── terminal_guard.cpython-312.pyc
+│   │   └── userfunctions.cpython-312.pyc
+│   ├── system_mapping.py
+│   ├── terminal_guard.py
+│   └── userfunctions.py
 ├── LICENSE
 ├── main.py
 ├── model_cache
-│   └── models--intfloat--multilingual-e5-large
-│       ├── blobs
-│       │   ├── 020afdebf2762b29fcaf286629a96c3b3b65af241f6a08226b1cfee60a21def6
-│       │   ├── 4eca68d85ecd3034cf4174d8a4033a75344ea62d
-│       │   ├── 62c24cdc13d4c9952d63718d6c9fa4c287974249e16b7ade6d5a85e7bbb75626
-│       │   ├── 63d473457c905564c8f818cff50a22e144b45f7b
-│       │   ├── 6de1940d16d38be9877bf7cc228c9377841b311f
-│       │   ├── ac2039abdf6ff023b27c919bb9675cfe378cb10f
-│       │   ├── c0b23a5bdab73fb2c6ee05d6f767f26a6039343b
-│       │   ├── cfc8146abe2a0488e9e2a0c56de7952f7c11ab059eca145a0a727afce0db2865
-│       │   ├── d5698132694f4f1bcff08fa7d937b1701812598e
-│       │   └── fc68c8c9ccbe4af4c95b6c9f8d4a3b8d6c790768
-│       ├── refs
-│       │   └── main
-│       └── snapshots
-│           └── 0dc5580a448e4284468b8909bae50fa925907bc5
-│               ├── 1_Pooling
-│               │   └── config.json -> ../../../blobs/63d473457c905564c8f818cff50a22e144b45f7b
-│               ├── config.json -> ../../blobs/fc68c8c9ccbe4af4c95b6c9f8d4a3b8d6c790768
-│               ├── model.safetensors -> ../../blobs/020afdebf2762b29fcaf286629a96c3b3b65af241f6a08226b1cfee60a21def6
-│               ├── modules.json -> ../../blobs/ac2039abdf6ff023b27c919bb9675cfe378cb10f
-│               ├── README.md -> ../../blobs/c0b23a5bdab73fb2c6ee05d6f767f26a6039343b
-│               ├── sentence_bert_config.json -> ../../blobs/4eca68d85ecd3034cf4174d8a4033a75344ea62d
-│               ├── sentencepiece.bpe.model -> ../../blobs/cfc8146abe2a0488e9e2a0c56de7952f7c11ab059eca145a0a727afce0db2865
-│               ├── special_tokens_map.json -> ../../blobs/d5698132694f4f1bcff08fa7d937b1701812598e
-│               ├── tokenizer_config.json -> ../../blobs/6de1940d16d38be9877bf7cc228c9377841b311f
-│               └── tokenizer.json -> ../../blobs/62c24cdc13d4c9952d63718d6c9fa4c287974249e16b7ade6d5a85e7bbb75626
+│   ├── hub
+│   │   └── models--terminAl-thesis-2025--deberta-v3-base-terminAl-guard
+│   │       ├── blobs
+│   │       │   ├── 12cc2e86bad0e731393847b017b32a7405ebd4f8
+│   │       │   ├── 2c9cb07c8fdeeb5ac3ceafb170592e990b204dcd
+│   │       │   ├── 8ee2b3623dc526b123cde0aaa401755b82299af2
+│   │       │   ├── c679fbf93643d19aab7ee10c0b99e460bdbc02fedf34b92b05af343b4af586fd
+│   │       │   ├── d97990f914148256b78fc640156dbce40981c8f7
+│   │       │   ├── ee168f1f63dc82f7e117fef60cbc1e2411664107f0c47192364cf0849b43b181
+│   │       │   └── f675ce2bb7a03d7e01219f09b8a9d1c3b4411d51
+│   │       ├── refs
+│   │       │   └── main
+│   │       └── snapshots
+│   │           └── 0e5eb69f04ebea40e5d0e3dd7be812961550d5b9
+│   │               ├── added_tokens.json -> ../../blobs/8ee2b3623dc526b123cde0aaa401755b82299af2
+│   │               ├── config.json -> ../../blobs/f675ce2bb7a03d7e01219f09b8a9d1c3b4411d51
+│   │               ├── model.safetensors -> ../../blobs/ee168f1f63dc82f7e117fef60cbc1e2411664107f0c47192364cf0849b43b181
+│   │               ├── special_tokens_map.json -> ../../blobs/2c9cb07c8fdeeb5ac3ceafb170592e990b204dcd
+│   │               ├── spm.model -> ../../blobs/c679fbf93643d19aab7ee10c0b99e460bdbc02fedf34b92b05af343b4af586fd
+│   │               ├── tokenizer_config.json -> ../../blobs/d97990f914148256b78fc640156dbce40981c8f7
+│   │               └── tokenizer.json -> ../../blobs/12cc2e86bad0e731393847b017b32a7405ebd4f8
+│   ├── models--intfloat--multilingual-e5-large
+│   │   ├── blobs
+│   │   │   ├── 020afdebf2762b29fcaf286629a96c3b3b65af241f6a08226b1cfee60a21def6
+│   │   │   ├── 4eca68d85ecd3034cf4174d8a4033a75344ea62d
+│   │   │   ├── 62c24cdc13d4c9952d63718d6c9fa4c287974249e16b7ade6d5a85e7bbb75626
+│   │   │   ├── 63d473457c905564c8f818cff50a22e144b45f7b
+│   │   │   ├── 6de1940d16d38be9877bf7cc228c9377841b311f
+│   │   │   ├── ac2039abdf6ff023b27c919bb9675cfe378cb10f
+│   │   │   ├── c0b23a5bdab73fb2c6ee05d6f767f26a6039343b
+│   │   │   ├── cfc8146abe2a0488e9e2a0c56de7952f7c11ab059eca145a0a727afce0db2865
+│   │   │   ├── d5698132694f4f1bcff08fa7d937b1701812598e
+│   │   │   └── fc68c8c9ccbe4af4c95b6c9f8d4a3b8d6c790768
+│   │   ├── refs
+│   │   │   └── main
+│   │   └── snapshots
+│   │       └── 0dc5580a448e4284468b8909bae50fa925907bc5
+│   │           ├── 1_Pooling
+│   │           │   └── config.json -> ../../../blobs/63d473457c905564c8f818cff50a22e144b45f7b
+│   │           ├── config.json -> ../../blobs/fc68c8c9ccbe4af4c95b6c9f8d4a3b8d6c790768
+│   │           ├── model.safetensors -> ../../blobs/020afdebf2762b29fcaf286629a96c3b3b65af241f6a08226b1cfee60a21def6
+│   │           ├── modules.json -> ../../blobs/ac2039abdf6ff023b27c919bb9675cfe378cb10f
+│   │           ├── README.md -> ../../blobs/c0b23a5bdab73fb2c6ee05d6f767f26a6039343b
+│   │           ├── sentence_bert_config.json -> ../../blobs/4eca68d85ecd3034cf4174d8a4033a75344ea62d
+│   │           ├── sentencepiece.bpe.model -> ../../blobs/cfc8146abe2a0488e9e2a0c56de7952f7c11ab059eca145a0a727afce0db2865
+│   │           ├── special_tokens_map.json -> ../../blobs/d5698132694f4f1bcff08fa7d937b1701812598e
+│   │           ├── tokenizer_config.json -> ../../blobs/6de1940d16d38be9877bf7cc228c9377841b311f
+│   │           └── tokenizer.json -> ../../blobs/62c24cdc13d4c9952d63718d6c9fa4c287974249e16b7ade6d5a85e7bbb75626
+│   ├── models--intfloat--multilingual-e5-small
+│   │   ├── blobs
+│   │   │   ├── 059214673d9d6d2ee319411e2ffec8c024b816d5
+│   │   │   ├── 0b44a9d7b51c3c62626640cda0e2c2f70fdacdc25bbbd68038369d14ebdf4c39
+│   │   │   ├── 1a55775f53449dac10a2bcbc312469fac40b96d53198c407081a831f81c98477
+│   │   │   ├── 4eca68d85ecd3034cf4174d8a4033a75344ea62d
+│   │   │   ├── 60a2a84020f1d74cc53ea9e8c4e91cf4af6c2b68
+│   │   │   ├── ac2039abdf6ff023b27c919bb9675cfe378cb10f
+│   │   │   ├── acbd4014202bf4dbc6c03229bcbeef7c4feafb58
+│   │   │   ├── cfc8146abe2a0488e9e2a0c56de7952f7c11ab059eca145a0a727afce0db2865
+│   │   │   ├── e0b1d18ecd0ae4ff1d47bd297d910c0cf83e504b
+│   │   │   └── e56327af55e9742caf76bff9ba83b6904cd2003d
+│   │   ├── refs
+│   │   │   └── main
+│   │   └── snapshots
+│   │       └── c007d7ef6fd86656326059b28395a7a03a7c5846
+│   │           ├── 1_Pooling
+│   │           │   └── config.json -> ../../../blobs/acbd4014202bf4dbc6c03229bcbeef7c4feafb58
+│   │           ├── config.json -> ../../blobs/60a2a84020f1d74cc53ea9e8c4e91cf4af6c2b68
+│   │           ├── model.safetensors -> ../../blobs/1a55775f53449dac10a2bcbc312469fac40b96d53198c407081a831f81c98477
+│   │           ├── modules.json -> ../../blobs/ac2039abdf6ff023b27c919bb9675cfe378cb10f
+│   │           ├── README.md -> ../../blobs/e56327af55e9742caf76bff9ba83b6904cd2003d
+│   │           ├── sentence_bert_config.json -> ../../blobs/4eca68d85ecd3034cf4174d8a4033a75344ea62d
+│   │           ├── sentencepiece.bpe.model -> ../../blobs/cfc8146abe2a0488e9e2a0c56de7952f7c11ab059eca145a0a727afce0db2865
+│   │           ├── special_tokens_map.json -> ../../blobs/e0b1d18ecd0ae4ff1d47bd297d910c0cf83e504b
+│   │           ├── tokenizer_config.json -> ../../blobs/059214673d9d6d2ee319411e2ffec8c024b816d5
+│   │           └── tokenizer.json -> ../../blobs/0b44a9d7b51c3c62626640cda0e2c2f70fdacdc25bbbd68038369d14ebdf4c39
+│   ├── stored_tokens
+│   └── token
 ├── project_tree.txt
 ├── README.md
+├── requirements.txt
 ├── settings
-│   ├── example.env
-│   └── settings.json
-├── system_tree.json
-├── terminAl.sh
-└── tests
-    ├── root_dirs.json
-    ├── system_mapping.json
-    ├── system_tree.json
-    ├── test_os_mapping.ipynb
-    └── tree.py
+│   ├── all_debug_data.json
+│   ├── check_system_map.ipynb
+│   ├── directories.json
+│   ├── Modelfile
+│   ├── __pycache__
+│   │   ├── ascii_art.cpython-312.pyc
+│   │   └── system_prompts.cpython-312.pyc
+│   ├── settings.json
+│   ├── system_prompts.py
+│   ├── system_tree_debug.json
+│   └── system_tree_debug.json2
+└── terminAl.sh
 
-15 directories, 45 files
+45 directories, 167 files

@@ -11,7 +11,7 @@ from ollama import AsyncClient
 from settings.system_prompts import system_prompt
 
 # Lade Umgebungsvariablen aus der .env-Datei
-load_dotenv("./settings/.env")
+load_dotenv("./.env")
 terminal_path = os.getenv("TERMINAL_PATH")
 
 

@@ -12,7 +12,7 @@ from icecream import ic
 from divers.ascii_art import terminAl_ascii
 
 # Lade Umgebungsvariablen aus der .env-Datei
-load_dotenv("./settings/.env")
+load_dotenv("./.env")
 # Hole den Pfad zur Terminal-Anwendung aus den Umgebungsvariablen
 terminal_path = os.getenv("TERMINAL_PATH")
 
@@ -61,7 +61,7 @@ class UserFunctions:
         print("     logout       - Beendet die Datenbankverbindung")
 
     @classmethod
-    def info(cls):
+    def info(cls, device, name, memory):
         """
         Zeigt allgemeine Informationen über die Anwendung und ihre Konfiguration an.
         Liest die Einstellungen aus der settings.json-Datei.
@@ -74,10 +74,16 @@ class UserFunctions:
         print("  terminAl - Eine AI-Agent-Anwendung für Linux-Systeme")
         print("  Version: 0.1 (Proof of Concept)")
 
+        print("\nDevice Details:")
+        print(f"  Verfügbares Update Device:    {device}")
+        print(f"  Device Name:                  {name}")
+        print(f"  VRAM verfügbar:               {memory}GB")
+
         if settings:
             print("\nModelldetails:")
             print(f"  Ollama Model: {ollama_settings.get('ollama_model', 'Nicht gesetzt')}")
             print(f"  Embedding Model: {chroma_settings.get('embedding_model', 'Nicht gesetzt')}")
+
         else:
             print("Einstellungen wurden nicht geladen.")
 
@@ -222,7 +228,7 @@ class UserFunctions:
 
                     if process.returncode == 0:
                         print(stdout)
-                        return stdout
+                        return None
                     else:
                         ic()
                         ic(f"Fehler beim Abfragen der Tabellen:\n{stderr}")

@@ -1,5 +1,4 @@
 {
-  "check": "HelloWorld!",
   "sudo": true,
   "prev_hallucination": false,
   "os_mapping": {
@@ -9,26 +8,27 @@
       "-f",
       "-J",
       "--nolinks",
+      "-I",
+      "proc|sys|dev|run|mnt|media|tmp|var/tmp|var/cache",
       "-o"
     ],
     "delete_tree_command": [
       "rm"
     ],
-    "tree_file_path": "/home/m/PycharmProjects/terminAl/database/system_tree.json"
+    "tree_file_path": "database/system_tree.json"
   },
   "ollama_settings": {
-    "ollama_url": "http://localhost:11434",
+    "ollama_url": "http://host.docker.internal:11434",
     "ollama_model2": "llama3.2:3b-instruct-q4_K_M",
-    "ollama_model": "llama3.1:8b-instruct-q4_K_M"
+    "ollama_model": "hf.co/terminAl-thesis-2025/Llama3.1-terminAl-8b-q5_k_m:Q5_K_M"
   },
   "chroma_settings": {
-    "chromadb_path": "/home/m/PycharmProjects/terminAl/database/vector_db",
+    "chromadb_path": "./database/vector_db",
     "chromadb_tree_collection": "tree_collection",
     "chromadb_docs_collection": "docs_collection",
     "chroma_update_interval": 600,
     "chroma_auto_update": false,
-    "chroma_latest_update": "03.05.2025 11:56:44",
-    "current_collection_name": "temp_1745495269",
+    "chroma_latest_update": "11.05.2025 09:49:59",
     "embedding_model": "intfloat/multilingual-e5-small"
   },
   "tools": {
@@ -58,6 +58,6 @@
       ]
     }
   },
-  "model_cache_directory": "/home/m/PycharmProjects/terminAl/model_cache",
+  "model_cache_directory": "model_cache",
   "chroma_auto_update": false
 }

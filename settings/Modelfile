@@ -1,0 +1,16 @@
+# Use a known base (you can change this depending on what the model was finetuned from)
+FROM llama3:8b-instruct-q4_K_M
+
+# Tell Ollama where to fetch the private model (replace this later)
+PARAMETER model_url=https://huggingface.co/your-username/your-repo/resolve/main/your-model.gguf
+
+# Optional metadata
+TEMPLATE """<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+{{ .System }}<|eot_id|><|start_header_id|>user<|end_header_id|>
+{{ .Prompt }}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+"""
+
+# Optional model-specific configuration
+PARAMETER temperature=0.1
+PARAMETER top_p=0.9
+PARAMETER num_ctx=4096

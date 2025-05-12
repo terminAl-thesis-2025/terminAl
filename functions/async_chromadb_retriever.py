@@ -10,21 +10,10 @@ from chromadb.config import Settings
 from chromadb.utils import embedding_functions
 from dotenv import load_dotenv
 from icecream import ic
-import nltk
-from nltk.corpus import stopwords
 import torch
 
-# Versuch, die deutschen Stopwörter zu laden, falls nicht vorhanden werden sie heruntergeladen
-try:
-    stopwords.words("german")  # Versuche darauf zuzugreifen
-except LookupError:
-    nltk.download('stopwords')
-    from nltk.corpus import stopwords  # Erneut importieren nach dem Download
-
-    stopwords.words("german")  # Jetzt sollte es funktionieren
-
 # Lade Umgebungsvariablen aus der .env-Datei
-load_dotenv("./settings/.env")
+load_dotenv("./.env")
 terminal_path = os.getenv("TERMINAL_PATH")
 
 
@@ -49,7 +38,7 @@ class AsyncChromaDBRetriever:
         # Erstelle die Embedding-Funktion mit einem multilingualen Modell
         self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
             model_name=self.chroma_settings.get("model_name", "intfloat/multilingual-e5-small"),
-            cache_folder=self.settings["model_cache_directory"],
+            cache_folder=terminal_path + self.settings["model_cache_directory"],
             device=self.device,
         )
 
@@ -76,7 +65,7 @@ class AsyncChromaDBRetriever:
         """
         # Erstelle den ChromaDB-Client (nicht in __init__, da bei Updates der Client aktualisiert wird)
         client = chromadb.PersistentClient(
-            path=self.chroma_settings["chromadb_path"],
+            path=terminal_path + self.chroma_settings["chromadb_path"],
             settings=Settings(anonymized_telemetry=False)
         )
 
@@ -133,7 +122,7 @@ class AsyncChromaDBRetriever:
         """
         # Erstelle den ChromaDB-Client (nicht in __init__, da bei Updates der Client aktualisiert wird)
         client = chromadb.PersistentClient(
-            path=self.chroma_settings["chromadb_path"],
+            path=terminal_path + self.chroma_settings["chromadb_path"],
             settings=Settings(anonymized_telemetry=False)
         )
 
@@ -171,13 +160,25 @@ class AsyncChromaDBRetriever:
                 # Bei mehreren Schlüsselwörtern: OR-Verknüpfung
                 where_document = {"$or": [{"$contains": kw} for kw in keywords]}
 
-            # Abfrage der Sammlung mit den Bedingungen
+            # Abfrage der Sammlung mit Metadatensuche
             results = collection.query(
-                query_texts="",  # Kein semantischer Vergleich, nur Textfilterung
+                query_texts="",
                 where_document=where_document,
+                where={"item": {"$in": keywords}},
                 n_results=top_k,
                 include=["documents", "metadatas"]
             )
+
+            if not results:
+                print("Results query (without filters)")
+
+                # Abfrage der Sammlung ohne Metadatensuche, falls mit Metadatensuche keine Resultate gefunden wurden
+                results = collection.query(
+                    query_texts="",
+                    where_document=where_document,
+                    n_results=top_k,
+                    include=["documents", "metadatas"]
+                )
 
             # Formatiere die Ergebnisse als Text
             formatted_text = self._format_context(results)
@@ -220,6 +221,9 @@ class AsyncChromaDBRetriever:
         Args:
             results_text: Formatierter Text aus ChromaDB
         """
+        ic()
+        ic(results_text)
+
         for block in results_text.strip().split("\n\n"):
             lines = block.splitlines()
             content_line = None

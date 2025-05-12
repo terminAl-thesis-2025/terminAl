@@ -8,7 +8,9 @@ from dotenv import load_dotenv
 from icecream import ic
 
 # Lade Umgebungsvariablen aus .env Datei
-load_dotenv("./settings/.env")
+ic()
+ic("Before SystemMapping")
+load_dotenv("./.env")
 terminal_path = os.getenv("TERMINAL_PATH")
 
 
@@ -24,8 +26,12 @@ class SystemMapping:
         Returns:
             tuple: Ergebnisse der OS-Abbildung und Postgres-Abbildung
         """
+        os_mapping_vars = cls.settings.get("os_mapping")
+        tree_file_path = terminal_path + os_mapping_vars.get("tree_file_path", "./database/system_tree.json")
+
         psql_results = cls.map_postgres()
-        os_results = cls.map_os()
+        cls.map_os()
+        os_results = cls.process_os_mapping(tree_file_path)
 
         return os_results, psql_results
 
@@ -120,9 +126,9 @@ class SystemMapping:
             dict: Verarbeitete Dateisystemabbildung
         """
         os_mapping_vars = cls.settings.get("os_mapping")
-        tree_command = os_mapping_vars.get("tree_command", None)
-        tree_file_path = os_mapping_vars.get("tree_file_path", "./database/system_tree.json")
-        delete_tree_command = os_mapping_vars.get("delete_tree_command", None)
+        tree_command = list(os_mapping_vars.get("tree_command", None))
+        tree_file_path = terminal_path + os_mapping_vars.get("tree_file_path", "./database/system_tree.json")
+        delete_tree_command = list(os_mapping_vars.get("delete_tree_command", None))
 
         if any(var is None for var in [tree_command, tree_file_path, delete_tree_command]):
             return {}
@@ -148,6 +154,7 @@ class SystemMapping:
                         text=True,
                         check=True
                     )
+
                     # Verarbeite die erzeugte Abbildung
                     return cls.process_os_mapping(tree_file_path)
 
@@ -170,6 +177,7 @@ class SystemMapping:
                         text=True,
                         check=True
                     )
+
                     # Verarbeite die erzeugte Abbildung
                     return cls.process_os_mapping(tree_file_path)
 
@@ -216,7 +224,7 @@ class SystemMapping:
             dict: Wörterbuch mit Dateipfaden und zugehörigen Informationen
         """
         if tree_file_path is None:
-            tree_file_path = cls.settings.get("tree_file_path", "./database/system_tree.json")
+            tree_file_path = terminal_path + cls.settings.get("tree_file_path", "./database/system_tree.json")
 
         try:
             with open(tree_file_path, 'r') as file:

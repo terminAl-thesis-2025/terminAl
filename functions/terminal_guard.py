@@ -6,7 +6,7 @@ import os
 from icecream import ic
 from transformers import pipeline
 from dotenv import load_dotenv
-
+from huggingface_hub import login
 # Umgebungsvariablen aus .env Datei laden
 load_dotenv()
 
@@ -21,10 +21,8 @@ class TerminAlGuard:
         self,
         model_name: str = "terminAl-thesis-2025/deberta-v3-base-terminAl-guard"
     ):
-        token = os.getenv("HF_TOKEN")
-        # load a sync text-classification pipeline
 
-        from huggingface_hub import login
+        # load a sync text-classification pipeline
         token = os.getenv("HF_TOKEN")
         if token:
             login(token)

@@ -19,7 +19,7 @@ from functions.async_environment_retriever import environment_retriever
 from functions.terminal_guard import TerminAlGuard
 
 # Umgebungsvariablen aus .env Datei laden
-load_dotenv("./settings/.env")
+load_dotenv("./.env")
 terminal_path = os.getenv("TERMINAL_PATH")  # Pfad zum Terminal-Verzeichnis
 
 
@@ -54,7 +54,7 @@ class TerminAl:
         """
         Hauptausführungsroutine, die die Benutzeroberfläche startet und Eingaben verarbeitet.
         """
-        await UserFunctions.clear(option="logo")  # Terminal bereinigen
+        # await UserFunctions.clear(option="logo")  # Terminal bereinigen
 
         print("Willkommen bei terminAl!\nZeige Benutzerhandbuch mit: \\help")
 
@@ -110,7 +110,12 @@ class TerminAl:
 
                 elif user_input.startswith(r"\info"):
                     # Systeminformationen anzeigen
-                    UserFunctions.info()
+                    update_device = self.chroma_updater.device
+                    update_device_name = self.chroma_updater.device_name
+                    update_device_memory = self.chroma_updater.device_memory
+                    UserFunctions.info(device=update_device,
+                                       name=update_device_name,
+                                       memory=update_device_memory)
 
                 elif user_input.startswith(r"\search"):
                     # Volltextsuche in ChromaDB durchführen
