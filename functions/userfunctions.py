@@ -69,6 +69,7 @@ class UserFunctions:
         settings = json.load(open(terminal_path + "settings/settings.json"))
         chroma_settings = settings.get("chroma_settings", {})
         ollama_settings = settings.get("ollama_settings", {})
+        guard_settings = settings.get("guard_settings", {})
 
         print("\nAllgemeine Details:")
         print("  terminAl - Eine AI-Agent-Anwendung für Linux-Systeme")
@@ -83,6 +84,7 @@ class UserFunctions:
             print("\nModelldetails:")
             print(f"  Ollama Model: {ollama_settings.get('ollama_model', 'Nicht gesetzt')}")
             print(f"  Embedding Model: {chroma_settings.get('embedding_model', 'Nicht gesetzt')}")
+            print(f"  Guard Model: {guard_settings.get('guard_model', 'Nicht gesetzt')}")
 
         else:
             print("Einstellungen wurden nicht geladen.")
@@ -196,7 +198,6 @@ class UserFunctions:
         if not settings:
             ic()
             ic("Einstellungen wurden nicht geladen.")
-            return None
 
         try:
             # PostgreSQL-Benutzer und Datenbankliste aus den Einstellungen holen
@@ -210,7 +211,6 @@ class UserFunctions:
                     print("Verfügbare Datenbanken:")
                     for db in databases:
                         print(f"  - {db}")
-                    return None
                 # Wenn "list <dbname>" --> Liste Tabellen in dieser DB auf
                 elif len(user_input) == 2 and user_input[1] in databases:
                     db_name = user_input[1]
@@ -228,16 +228,15 @@ class UserFunctions:
 
                     if process.returncode == 0:
                         print(stdout)
-                        return None
+                        return True
                     else:
                         ic()
                         ic(f"Fehler beim Abfragen der Tabellen:\n{stderr}")
-
-                    return None
+                        return False
                 else:
                     ic()
                     ic("Ungültige Eingabe für 'list'. Entweder nur 'list', 'list dbs' oder 'list <DB-Name>' angeben.")
-                    return None
+                    return False
 
             # Befehl "login" - Verbindung zu einer Datenbank herstellen
             elif user_input[0] == "login" and user_input[1] in databases:
@@ -254,12 +253,12 @@ class UserFunctions:
             else:
                 ic()
                 ic("Ungültige Eingabe. Bitte 'list', 'list dbs', 'list <DB-Name>' oder eine gültige Datenbank angeben.")
-                return None
+                return False
 
         except Exception as e:
             ic()
             ic(f"Fehler beim Starten des psql Logins: {str(e)}")
-            return None
+            return False
 
     @classmethod
     async def clear(cls, option):

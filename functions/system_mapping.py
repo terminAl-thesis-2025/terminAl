@@ -51,7 +51,8 @@ class SystemMapping:
         username = postgres_settings.get("username", "")
         databases = postgres_settings.get("databases", [])  # Liste der Datenbanken
         mapping_tables_command = postgres_settings.get("mapping_tables_command", [])  # Liste der Befehlsteile
-
+        ic()
+        ic(mapping_tables_command)
         table_results = []
 
         mapping_tables_command[2] = username
@@ -115,6 +116,8 @@ class SystemMapping:
                 ic(e)
                 return []
 
+        ic()
+        ic(table_results)
         return table_results
 
     @classmethod
@@ -247,19 +250,23 @@ class SystemMapping:
                 if type(directory) == dict:
                     if directory["type"] == "directory":
                         directories.append(directory["name"])
-                    if directory["type"] == "directory" and directory.get("contents", False):
-                        for item in directory["contents"]:
-                            if item["type"] == "file":
-                                item_name = item["name"].split("/")[-1]
-                                directory_dict[item["name"]] = {"filetype": item["type"], "item": item_name}
-                            elif item["type"] == "directory":
-                                root_dirs.append(item)
+                        # Füge alle Verzeichnisse zum directory_dict hinzu, unabhängig davon, ob sie Inhalte haben
+                        item_name = directory["name"].split("/")[-1]
+                        directory_dict[directory["name"]] = {"filetype": directory["type"], "item": item_name}
 
-
-                elif directory["type"] == "directory" and not directory.get("contents", False):
-                    item_name = directory["name"].split("/")[-1]
-                    directory_dict[directory["name"]] = {"filetype": directory["type"], "item": item_name}
-                    empty_directories += 1
+                        # Verarbeite Inhalte, falls vorhanden
+                        if directory.get("contents", False):
+                            for item in directory["contents"]:
+                                if item["type"] == "file":
+                                    # Extrahiere den Dateinamen aus dem Pfad und füge die Datei zum Verzeichnis-Dict hinzu
+                                    item_name = item["name"].split("/")[-1]
+                                    directory_dict[item["name"]] = {"filetype": item["type"], "item": item_name}
+                                elif item["type"] == "directory":
+                                    # Füge Unterverzeichnis zur root_dirs Liste hinzu, um es später zu verarbeiten
+                                    root_dirs.append(item)
+                        else:
+                            # Zähle leere Verzeichnisse
+                            empty_directories += 1
 
             # Entferne große Elemente
             for path, content in directory_dict.items():

@@ -139,7 +139,7 @@ class AsyncChromaDBUpdater:
             )
 
             # OS-Ergebnisse vorbereiten
-            documents = [f"*Dokument: {meta['item']} Pfad: {path}*" for path, meta in
+            documents = [f"*Item: {meta['item']}, Item-Typ: {meta["filetype"]}, Pfad: {path}*" for path, meta in
                          os_results.items()]  # Formatierte Dokumente
 
             # Metadaten für OS-Ergebnisse erstellen
@@ -172,7 +172,6 @@ class AsyncChromaDBUpdater:
                     ids=id_chunk
                 )
 
-            ic("Remove Debug Dump")
             # After the loop, dump the entire list to a single JSON file
             with open(f"/app/settings/all_debug_data.json", "w", encoding="utf-8") as f:
                 json.dump(all_debug_data, f, ensure_ascii=False, indent=2)
@@ -337,7 +336,7 @@ class AsyncChromaDBUpdater:
     def _clean_up(self):
         """
         Bereinigt den ChromaDB-Speicher:
-        - Behält maximal die 15 neuesten Ordner (basierend auf Änderungszeit).
+        - Behält maximal die x neuesten Ordner (basierend auf Änderungszeit).
         - Löscht alle älteren Ordner.
         - Führt VACUUM auf der chroma.sqlite3-Datenbank durch, um den Speicherplatz zu optimieren.
         """
@@ -364,8 +363,8 @@ class AsyncChromaDBUpdater:
         # Sortieren nach Änderungszeit (neueste zuerst)
         folder_paths_with_mtime.sort(key=lambda x: x[1], reverse=True)
 
-        # Die 15 neuesten Ordner behalten, den Rest löschen
-        folders_to_delete = folder_paths_with_mtime[15:]  # Alle anderen
+        # Die x neuesten Ordner behalten, den Rest löschen
+        folders_to_delete = folder_paths_with_mtime[self.chroma_settings.get("collection_archive_size", 10):]
 
         # Alte Ordner löschen
         for path, mtime in folders_to_delete:

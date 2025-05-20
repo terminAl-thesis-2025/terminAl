@@ -54,7 +54,7 @@ class TerminAl:
         """
         Hauptausführungsroutine, die die Benutzeroberfläche startet und Eingaben verarbeitet.
         """
-        # await UserFunctions.clear(option="logo")  # Terminal bereinigen
+        await UserFunctions.clear(option="logo")  # Terminal bereinigen
 
         print("Willkommen bei terminAl!\nZeige Benutzerhandbuch mit: \\help")
 
@@ -135,9 +135,20 @@ class TerminAl:
                     # PostgreSQL-Datenbankverbindung herstellen
                     parts = user_input.split(" ")
                     if len(parts) >= 2:
-                        self.current_user_database = await UserFunctions.psql(parts[1:])
+                        current_user_database = await UserFunctions.psql(parts[1:])
+
+                        match current_user_database:
+                            case True | False:
+                                pass
+                            case None:
+                                self.current_user_database = None
+                            case list() as db_conn:  # Match any list and capture it as db_conn
+                                self.current_user_database = db_conn
+                            case _:
+                                ic()
+                                ic(f"Unerwartete Datenbankkonfiguration: {type(current_user_database)}")
                     else:
-                        print("❗ Bitte gib entweder 'list' oder einen Datenbanknamen an.")
+                        print("Bitte gib entweder 'list' oder einen Datenbanknamen an.")
 
                 elif user_input.startswith(r"\chromadb_collections"):
                     # ChromaDB-Sammlungen auflisten
@@ -148,6 +159,7 @@ class TerminAl:
                     print("Unbekannter Befehl. Zeige alle Befehle mit \\help")
 
                 else:
+                    print("Prompt wird bearbeitet...")
                     # Schlüsselwörter aus der Benutzereingabe extrahieren
                     keywords = self.extract_keywords(user_input)
 
@@ -180,7 +192,7 @@ class TerminAl:
                         "### ENDE AKTUELLE UMGEBUNGSINFORMATIONEN\n\n"
                         "# BEGINN USERPROMPT\n"
                         f"{cleaned_user_input}\n"
-                        "Nutze dazu die folgenden Pfade oder Datenbankdetails, wenn vorhanden:"
+                        "Nutze dazu die folgenden Pfade oder Datenbankdetails, wenn vorhanden. Priorisiere den Kontext über Umgebungsinformationen, falls nötig:"
                         f"{postgres_context if self.current_user_database else vector_context}\n"
                         "# ENDE USERPROMPT\n"
                     )
@@ -195,7 +207,7 @@ class TerminAl:
                         parsed = json.loads(safe_result)
                     except json.JSONDecodeError as e:
                         ic() # JSON konnte nicht geparsed werden
-                        ic(e)
+                        ic(f"Modell hat ungültiges JSON-Format zurückgegeben: {e}")
                         ic("Antwort vom Modell:")
                         ic(result)
                         continue
@@ -241,8 +253,10 @@ class TerminAl:
                     # Befehl basierend auf der Benutzerentscheidung und dem Typ ausführen
                     if decision == "j":
                         if parsed["tool"] == "sql" and self.current_user_database:
+                            # Spezialfälle in der Funktion psql_command abwickeln
+                            command_list = self.psql_command(command)
+
                             # SQL-Befehl mit aktiver Datenbankverbindung ausführen
-                            command_list = self.current_user_database + [command]
                             await UserFunctions.cmd(command_list)
                         elif parsed["tool"] == "sql" and not self.current_user_database:
                             print("Bitte zuerst \\psql login <Datenbankname> ausführen.")
@@ -331,6 +345,46 @@ class TerminAl:
         s = re.sub(r'(?<!\\)\\(?!["\\/bfnrtu])', r'\\\\', s)
         return s
 
+    def psql_command(self, command):
+        """
+        Verarbeitet SQL-Befehle für die PostgreSQL-Datenbankverbindung.
+        Behandelt verschiedene Befehlsformate und bereitet sie für die Ausführung vor.
+
+        Args:
+            command: Der auszuführende SQL-Befehl (str oder list)
+
+        Returns:
+            list: Eine Liste mit dem vollständigen Befehl für die Ausführung
+        """
+        command_list = self.current_user_database.copy()  # Kopie der Datenbank-Verbindungsparameter erstellen
+
+        if "-f" in command:
+            # Sonderbehandlung für Dateiimport-Befehle mit dem "-f" Flag
+            # Bei Dateiimports muss das vorhandene "-c" Flag durch "-f" ersetzt werden
+            # und der Befehlsaufbau angepasst werden
+
+            # Shell-Argument-Parsing für korrekte Behandlung von Anführungszeichen im Befehl
+            command = shlex.split(command)
+
+            # Das letzte Element (normalerweise "-c" Flag) aus der Verbindungsparameter-Liste entfernen,
+            # da wir es mit den neuen Parametern aus dem Modellbefehl ersetzen werden
+            command_list.pop()
+
+            # Die letzten zwei Elemente vom empfohlenen Befehl anhängen
+            # ("-f"-Flag und der Pfad zur SQL-Datei)
+            command_list.extend(command[-2:])
+
+            return command_list
+
+        else:
+            # Bei String-Befehlen, als neues Listenelement anhängen
+            if isinstance(command, str):
+                command_list.append(command)
+            # Bei Listen-Befehlen, die Liste erweitern
+            elif isinstance(command, list):
+                command_list.extend(command)
+
+            return command_list
 
 async def main():
     """

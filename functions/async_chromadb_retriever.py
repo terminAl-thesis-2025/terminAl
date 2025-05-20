@@ -221,8 +221,6 @@ class AsyncChromaDBRetriever:
         Args:
             results_text: Formatierter Text aus ChromaDB
         """
-        ic()
-        ic(results_text)
 
         for block in results_text.strip().split("\n\n"):
             lines = block.splitlines()

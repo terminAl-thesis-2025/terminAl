@@ -18,6 +18,7 @@ async def environment_retriever():
     # Gibt ein Wörterbuch mit den gesammelten Umgebungsinformationen zurück
     return {
         "shell": shell,
+        "root_directory": "/",
         "current_working_directory": cwd,
         "user": user,
         "hostname": hostname

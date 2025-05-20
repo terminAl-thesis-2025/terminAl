@@ -9,7 +9,7 @@
       "-J",
       "--nolinks",
       "-I",
-      "proc|sys|dev|run|mnt|media|tmp|var/tmp|var/cache",
+      "proc|sys|dev|run|mnt|media|tmp|var/tmp|var/cache|dist-packages|site-packages|__pycache__|test|tests|scipy",
       "-o"
     ],
     "delete_tree_command": [
@@ -19,8 +19,10 @@
   },
   "ollama_settings": {
     "ollama_url": "http://host.docker.internal:11434",
-    "ollama_model2": "llama3.2:3b-instruct-q4_K_M",
     "ollama_model": "hf.co/terminAl-thesis-2025/Llama3.1-terminAl-8b-q5_k_m:Q5_K_M"
+  },
+  "guard_settings": {
+    "guard_model": "terminAl-thesis-2025/deberta-v3-base-terminAl-guard"
   },
   "chroma_settings": {
     "chromadb_path": "./database/vector_db",
@@ -28,8 +30,9 @@
     "chromadb_docs_collection": "docs_collection",
     "chroma_update_interval": 600,
     "chroma_auto_update": false,
-    "chroma_latest_update": "11.05.2025 09:49:59",
-    "embedding_model": "intfloat/multilingual-e5-small"
+    "chroma_latest_update": "18.05.2025 13:22:55",
+    "embedding_model": "intfloat/multilingual-e5-small",
+    "collection_archive_size": 5
   },
   "tools": {
     "postgres": {

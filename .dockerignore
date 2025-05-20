@@ -1,0 +1,18 @@
+# Ignore database directory to prevent it from being copied into the image
+database/
+database/**/*
+
+# Ignore files which are mounted anyways
+divers/testkonzept/
+divers/testkonzept/*
+
+# Other directories/files to exclude
+.git/
+.env
+.idea/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.DS_Store
