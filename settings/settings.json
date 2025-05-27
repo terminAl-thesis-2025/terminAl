@@ -19,7 +19,11 @@
   },
   "ollama_settings": {
     "ollama_url": "http://host.docker.internal:11434",
-    "ollama_model": "hf.co/terminAl-thesis-2025/Llama3.1-terminAl-8b-q5_k_m:Q5_K_M"
+    "ollama_model": "hf.co/terminAl-thesis-2025/Llama3.1-terminAl-8b-q5_k_m:Q5_K_M",
+    "modelloptionen": {
+      "1": "hf.co/terminAl-thesis-2025/Llama3.1-terminAl-8b-q5_k_m:Q5_K_M",
+      "2": "hf.co/terminAl-thesis-2025/Llama3.1-terminAl-8b:Q5_K_M"
+    }
   },
   "guard_settings": {
     "guard_model": "terminAl-thesis-2025/deberta-v3-base-terminAl-guard"
@@ -30,7 +34,7 @@
     "chromadb_docs_collection": "docs_collection",
     "chroma_update_interval": 600,
     "chroma_auto_update": false,
-    "chroma_latest_update": "18.05.2025 13:22:55",
+    "chroma_latest_update": "22.05.2025 09:14:04",
     "embedding_model": "intfloat/multilingual-e5-small",
     "collection_archive_size": 5
   },

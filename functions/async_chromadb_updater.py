@@ -154,7 +154,6 @@ class AsyncChromaDBUpdater:
 
             # IDs für OS-Ergebnisse fortlaufend nach den PostgreSQL-IDs nummerieren
             ids = [str(i + psql_result_len) for i in range(len(documents))]
-            all_debug_data = []
 
             # OS-Ergebnisse in Batches zur temporären Sammlung hinzufügen
             for doc_chunk, meta_chunk, id_chunk in zip(
@@ -163,18 +162,11 @@ class AsyncChromaDBUpdater:
                     self._chunked(ids, batch_size)
             ):
                 # Add the current batch data to the list
-                debug_data = {"data": doc_chunk, "metadatas": meta_chunk, "ids": id_chunk}
-                all_debug_data.append(debug_data)
-
                 temp_collection.add(
                     documents=doc_chunk,
                     metadatas=meta_chunk,
                     ids=id_chunk
                 )
-
-            # After the loop, dump the entire list to a single JSON file
-            with open(f"/app/settings/all_debug_data.json", "w", encoding="utf-8") as f:
-                json.dump(all_debug_data, f, ensure_ascii=False, indent=2)
 
             # Hauptsammlung löschen, falls vorhanden
             try:

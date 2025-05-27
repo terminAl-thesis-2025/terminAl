@@ -36,36 +36,39 @@ class UserFunctions:
         Zeigt eine Hilfeübersicht mit allen verfügbaren Befehlen an.
         """
         print("Verfügbare Befehle:")
-        print("  Eingabe ohne \\      - Löst eine Anfrage an das KI-Modell aus.")
+        print("  Eingabe ohne \\       - Löst eine Anfrage an das KI-Modell aus.")
         print("                         Es können Keywords in <> angegeben werden, ")
         print("                         was eine Suche nach diesen Keywords in der ")
         print("                         Vektordatenbank auslöst")
-        print("     <Begriff>          - Werden bei einer Anfrage an das KI-Modell")
-        print("                          Begriffe in <> gesetzt, löst das System zuerst eine Suche")
-        print("                          nach diesem Begriff aus und gibt die Resultate")
-        print("                          an das KI-Modell weiter. Dies ist nützlich wenn")
-        print("                          dem Modell der Pfad zur Datei zur Verfügung")
-        print("                          gestellt werden soll.")
+        print("     <Begriff>         - Werden bei einer Anfrage an das KI-Modell")
+        print("                         Begriffe in <> gesetzt, löst das System zuerst eine Suche")
+        print("                         nach diesem Begriff aus und gibt die Resultate")
+        print("                         an das KI-Modell weiter. Dies ist nützlich wenn")
+        print("                         dem Modell der Pfad zu einer Datei zur Verfügung")
+        print("                         gestellt werden soll.")
         print("  \\exit                - Beendet die Anwendung")
         print("  \\help                - Zeigt diese Hilfe an")
         print("  \\info                - Zeigt Informationen zur Anwendung")
         print("  \\cmd {Befehl}        - Führt einen Shell-Befehl direkt aus")
-        print("     cd terminAl         - Zurück zur Applikation")
+        print("     cd terminAl       - Zurück zur Applikation")
         print("  \\clear               - Leert den Bildschirm/Terminal")
-        print("     logo                - Leert den Bildschirm/Terminal, und zeigt das logo an")
+        print("     logo              - Leert den Bildschirm/Terminal, und zeigt das logo an")
         print("  \\update              - DB-Update Befehle:")
-        print("     on                  - Aktiviert automatische DB-Updates")
-        print("     off                 - Deaktiviert automatische DB-Updates")
-        print("     now                 - Führt sofort ein DB-Update durch")
-        print("     status              - Zeigt den aktuellen Status der DB-Updates")
+        print("     on                - Aktiviert automatische DB-Updates")
+        print("     off               - Deaktiviert automatische DB-Updates")
+        print("     now               - Führt sofort ein DB-Update durch")
+        print("     status            - Zeigt den aktuellen Status der DB-Updates")
         print("  \\psql                - PostgreSQL Befehle:")
-        print("     list                - Listet verfügbare Datenbanken")
-        print("     list dbs            - Listet ebenfalls alle verfügbaren Datenbanken")
-        print("     list {DB}           - Listet alle Tabellen in der angegebenen Datenbank")
-        print("     login {DB}          - Verbindet zu einer angegebenen Datenbank")
-        print("     switch {DB}         - Wechselt zu einer anderen Datenbank")
-        print("     logout              - Beendet die Datenbankverbindung")
+        print("     list              - Listet verfügbare Datenbanken")
+        print("     list dbs          - Listet ebenfalls alle verfügbaren Datenbanken")
+        print("     list {DB}         - Listet alle Tabellen in der angegebenen Datenbank")
+        print("     login {DB}        - Verbindet zu einer angegebenen Datenbank")
+        print("     switch {DB}       - Wechselt zu einer anderen Datenbank")
+        print("     logout            - Beendet die Datenbankverbindung")
         print("  \\search {Begriff}    - PostgreSQL Befehle:")
+        print("  \\model               - Model Befehle:")
+        print("     list              - Zeigt alle verfügbaren LLMs mit der ID an")
+        print("     {ID}              - Setzt dieses LLM als default für Anfragen")
 
     @classmethod
     def info(cls, device, name, memory):
@@ -284,3 +287,38 @@ class UserFunctions:
         # Wenn die Option "logo" angegeben wurde, zeige das ASCII-Art Logo
         if option == "logo":
             print(terminAl_ascii)
+
+    @classmethod
+    async def model(cls, option):
+        """
+        Verwaltet verfügbare LLM-Modelle und ermöglicht das Wechseln zwischen ihnen.
+
+        Args:
+            option: Entweder "list" zum Anzeigen aller verfügbaren Modelle
+                    oder eine Modell-ID zum Setzen als Standardmodell
+        """
+        settings_path = os.path.join(terminal_path, "settings", "settings.json")
+        # Lade aktuelle Settings
+        with open(settings_path, "r") as f:
+            settings = json.load(f)
+
+        ollama_settings = settings.get("ollama_settings", {})
+        modelloptionen = ollama_settings.get("modelloptionen", {})
+
+        if option == "list":
+            # Tabelle ausgeben
+            print("ID   | Modellname")
+            print("-----|-----------")
+            for modell_id, modell_name in modelloptionen.items():
+                print(f"{modell_id:<5}| {modell_name}")
+        else:
+            # Prüfen, ob die angegebene ID existiert
+            if option in modelloptionen:
+                neues_modell = modelloptionen[option]
+                # Default ändern und zurückschreiben
+                settings["ollama_settings"]["ollama_model"] = neues_modell
+                with open(settings_path, "w") as f:
+                    json.dump(settings, f, indent=2)
+                print(f"Standardmodell wurde auf {neues_modell} gesetzt.")
+            else:
+                print(f"Ungültige Modell-ID: {option}.")

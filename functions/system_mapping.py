@@ -51,8 +51,7 @@ class SystemMapping:
         username = postgres_settings.get("username", "")
         databases = postgres_settings.get("databases", [])  # Liste der Datenbanken
         mapping_tables_command = postgres_settings.get("mapping_tables_command", [])  # Liste der Befehlsteile
-        ic()
-        ic(mapping_tables_command)
+
         table_results = []
 
         mapping_tables_command[2] = username
@@ -116,8 +115,6 @@ class SystemMapping:
                 ic(e)
                 return []
 
-        ic()
-        ic(table_results)
         return table_results
 
     @classmethod

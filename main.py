@@ -154,6 +154,10 @@ class TerminAl:
                     # ChromaDB-Sammlungen auflisten
                     self.chroma_updater.list_collections()
 
+                elif user_input.startswith(r"\model"):
+                    user_input = user_input.split(" ")
+                    await UserFunctions.model(user_input[1:])
+
                 elif user_input.startswith("\\"):
                     # Unbekannter Befehl
                     print("Unbekannter Befehl. Zeige alle Befehle mit \\help")
