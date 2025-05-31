@@ -5,6 +5,9 @@ services:
     build:                        # ... ansonsten wird es neu gebildet
       context: .
       dockerfile: Dockerfile
+      # Enable BuildKit features for cache mounts
+      platforms:
+        - linux/amd64
     container_name: terminal-app
     volumes:
       - ./model_cache:/app/model_cache        # Keep host-mounted volume

@@ -33,22 +33,22 @@ RUN apt-get install -y gcc make wget && \
 RUN add-apt-repository ppa:deadsnakes/ppa -y
 
 # Update again and install Python
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --fix-missing \
+    mime-support \
     python3.12 \
     python3.12-venv \
     python3.12-dev \
-    python3-pip \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Install pip separately using get-pip.py
+RUN wget https://bootstrap.pypa.io/get-pip.py
+RUN python3.12 get-pip.py
+RUN rm get-pip.py
 
 # Set Python 3.12 as the default Python version
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 \
     && update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1
-
-# Ensure pip is properly set up for Python 3.12
-RUN wget https://bootstrap.pypa.io/get-pip.py && \
-    python3.12 get-pip.py && \
-    rm get-pip.py
 
 # Verify Python version
 RUN python --version
@@ -58,7 +58,9 @@ WORKDIR /app
 
 # Abhängigkeiten kopieren und installieren
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# RUN pip install --no-cache-dir -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements.txt
 
 # Copy source code EXCEPT the database directory
 # This prevents copying the host's database into the image

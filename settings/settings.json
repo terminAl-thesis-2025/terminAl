@@ -34,7 +34,7 @@
     "chromadb_docs_collection": "docs_collection",
     "chroma_update_interval": 600,
     "chroma_auto_update": false,
-    "chroma_latest_update": "22.05.2025 09:14:04",
+    "chroma_latest_update": "31.05.2025 06:44:25",
     "embedding_model": "intfloat/multilingual-e5-small",
     "collection_archive_size": 5
   },

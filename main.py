@@ -155,8 +155,9 @@ class TerminAl:
                     self.chroma_updater.list_collections()
 
                 elif user_input.startswith(r"\model"):
-                    user_input = user_input.split(" ")
-                    await UserFunctions.model(user_input[1:])
+                    user_input_parts = user_input.split(" ")
+                    option = user_input_parts[1] if len(user_input_parts) > 1 else "list"
+                    await UserFunctions.model(option)
 
                 elif user_input.startswith("\\"):
                     # Unbekannter Befehl
