@@ -19,10 +19,10 @@
   },
   "ollama_settings": {
     "ollama_url": "http://host.docker.internal:11434",
-    "ollama_model": "hf.co/terminAl-thesis-2025/Llama3.1-terminAl-8b-q5_k_m:Q5_K_M",
+    "ollama_model": "llama3.2:3b-instruct-q5_K_M",
     "modelloptionen": {
-      "1": "hf.co/terminAl-thesis-2025/Llama3.1-terminAl-8b-q5_k_m:Q5_K_M",
-      "2": "hf.co/terminAl-thesis-2025/Llama3.1-terminAl-8b:Q5_K_M"
+      "1": "llama3.1:8b-instruct-q5_K_M",
+      "2": "llama3.2:3b-instruct-q5_K_M"
     }
   },
   "guard_settings": {
