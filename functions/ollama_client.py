@@ -32,7 +32,7 @@ class OllamaClient:
         # Setze Host-URL mit Fallback auf localhost
         self.host = self.ollama_settings.get("ollama_url", "http://localhost:11434")
         # Setze Modellname mit Fallback auf Standardmodell
-        self.model = self.ollama_settings.get("ollama_model", "hf.co/terminAl-thesis-2025/Llama3.1-terminAl-8b-q5_k_m:Q5_K_M")
+        self.model = self.ollama_settings.get("ollama_model", "llama3.1:8b-instruct-q5_K_M")
         # Erstelle einen asynchronen Client für die Kommunikation mit Ollama
         self.client = AsyncClient(host=self.host)
         # Setze den System-Prompt für Kontext
@@ -53,7 +53,7 @@ class OllamaClient:
         # Frage nach dem default Model ab
         settings = json.load(open(terminal_path + "settings/settings.json"))
         # Setze Modellname mit Fallback auf Standardmodell
-        self.model = self.ollama_settings.get("ollama_model", "hf.co/terminAl-thesis-2025/Llama3.1-terminAl-8b-q5_k_m:Q5_K_M")
+        self.model = self.ollama_settings.get("ollama_model", "llama3.1:8b-instruct-q5_K_M")
         try:
             # Bereite die Nachrichtenstruktur vor
             messages = [{"role": "system", "content": self.system_prompt}]
