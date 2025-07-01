@@ -65,7 +65,7 @@ class UserFunctions:
         print("     login {DB}        - Verbindet zu einer angegebenen Datenbank")
         print("     switch {DB}       - Wechselt zu einer anderen Datenbank")
         print("     logout            - Beendet die Datenbankverbindung")
-        print("  \\search {Begriff}    - PostgreSQL Befehle:")
+        print("  \\search {Begriff}    - Volltextsuche in der Datenbank")
         print("  \\model               - Model Befehle:")
         print("     list              - Zeigt alle verfügbaren LLMs mit der ID an")
         print("     {ID}              - Setzt dieses LLM als default für Anfragen")
