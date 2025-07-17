@@ -1,6 +1,5 @@
 {
   "sudo": true,
-  "prev_hallucination": false,
   "os_mapping": {
     "tree_command": [
       "tree",
