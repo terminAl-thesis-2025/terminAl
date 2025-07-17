@@ -56,7 +56,7 @@ class TerminAl:
         """
         await UserFunctions.clear(option="logo")  # Terminal bereinigen
 
-        print("Willkommen bei terminAl!\nZeige Benutzerhandbuch mit: \\help")
+        print("Willkommen bei terminAl!\nZeige Bedienungsanleitung mit: \\help")
 
         # ChromaDB-Update-Zyklus als Hintergrundtask starten
         update_task = asyncio.create_task(self.chroma_updater.start_update_cycle())
