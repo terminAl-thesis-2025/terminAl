@@ -3,8 +3,7 @@
 │   ├── ascii_art.py
 │   └── testkonzept
 │       ├── iris.txt
-│       ├── testdaten.sql
-│       └── test.txt
+│       └── testdaten.sql
 ├── docker-compose.yml
 ├── Dockerfile
 ├── Dockerfile.txt
@@ -19,43 +18,12 @@
 │   └── userfunctions.py
 ├── LICENSE
 ├── main.py
-├── model_cache
-│   └── models--intfloat--multilingual-e5-small
-│       ├── blobs
-│       │   ├── 059214673d9d6d2ee319411e2ffec8c024b816d5
-│       │   ├── 0b44a9d7b51c3c62626640cda0e2c2f70fdacdc25bbbd68038369d14ebdf4c39
-│       │   ├── 1a55775f53449dac10a2bcbc312469fac40b96d53198c407081a831f81c98477
-│       │   ├── 4eca68d85ecd3034cf4174d8a4033a75344ea62d
-│       │   ├── 60a2a84020f1d74cc53ea9e8c4e91cf4af6c2b68
-│       │   ├── ac2039abdf6ff023b27c919bb9675cfe378cb10f
-│       │   ├── acbd4014202bf4dbc6c03229bcbeef7c4feafb58
-│       │   ├── cfc8146abe2a0488e9e2a0c56de7952f7c11ab059eca145a0a727afce0db2865
-│       │   ├── e0b1d18ecd0ae4ff1d47bd297d910c0cf83e504b
-│       │   └── e56327af55e9742caf76bff9ba83b6904cd2003d
-│       ├── refs
-│       │   └── main
-│       └── snapshots
-│           └── c007d7ef6fd86656326059b28395a7a03a7c5846
-│               ├── 1_Pooling
-│               │   └── config.json -> ../../../blobs/acbd4014202bf4dbc6c03229bcbeef7c4feafb58
-│               ├── config.json -> ../../blobs/60a2a84020f1d74cc53ea9e8c4e91cf4af6c2b68
-│               ├── model.safetensors -> ../../blobs/1a55775f53449dac10a2bcbc312469fac40b96d53198c407081a831f81c98477
-│               ├── modules.json -> ../../blobs/ac2039abdf6ff023b27c919bb9675cfe378cb10f
-│               ├── README.md -> ../../blobs/e56327af55e9742caf76bff9ba83b6904cd2003d
-│               ├── sentence_bert_config.json -> ../../blobs/4eca68d85ecd3034cf4174d8a4033a75344ea62d
-│               ├── sentencepiece.bpe.model -> ../../blobs/cfc8146abe2a0488e9e2a0c56de7952f7c11ab059eca145a0a727afce0db2865
-│               ├── special_tokens_map.json -> ../../blobs/e0b1d18ecd0ae4ff1d47bd297d910c0cf83e504b
-│               ├── tokenizer_config.json -> ../../blobs/059214673d9d6d2ee319411e2ffec8c024b816d5
-│               └── tokenizer.json -> ../../blobs/0b44a9d7b51c3c62626640cda0e2c2f70fdacdc25bbbd68038369d14ebdf4c39
 ├── project_tree.txt
 ├── README.md
 ├── requirements.txt
 ├── settings
-│   ├── Modelfile
-│   ├── __pycache__
-│   │   └── system_prompts.cpython-312.pyc
 │   ├── settings.json
 │   └── system_prompts.py
 └── terminAl.sh
 
-13 directories, 46 files
+5 directories, 22 files
