@@ -19,4 +19,5 @@ tttttt:::::::tttttt    e::::::e     e:::::err::::::rrrrr::::::rm::::::::::::::::
                                                                                                                                                          
             """
 
-#TODO reference: http://patorjk.com/software/taag/#p=author&f=Doh&t=terminAl
+
+"""Quelle: http://patorjk.com/software/taag/#p=author&f=Doh&t=terminAl"""
