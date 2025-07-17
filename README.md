@@ -6,9 +6,8 @@ Ein KI-basiertes CLI-Assistenzsystem für Linux-Systeme, das die Einstiegshürde
 
 terminAl ist ein Proof of Concept (PoC), der im Rahmen einer Bachelorarbeit entwickelt wurde. Das System ermöglicht es Benutzenden, natürlichsprachliche Anfragen zu stellen und diese in ausführbare Linux-Befehle oder PostgreSQL-Abfragen umzuwandeln. 
 
-**Primäre Forschungsfrage:** Wie kann ein KI-basiertes CLI-Assistenzsystem konzipiert und implementiert werden, um die Einstiegshürden in Linux-Systeme und darauf aufbauenden Technologien für Absolvierende wirtschaftsnaher Studiengänge zu reduzieren?
-
 ⚠️ **Hinweis:** Dies ist ein Proof of Concept und keine produktionsreife Anwendung.
+
 ⚠️ **Hinweis:** Dieses System führt Befehle auf dem System aus. Alle vorgeschlagenen Befehle sorgfältig prüfen, bevor diese genehmigt werden.
 
 ## Systemanforderungen
