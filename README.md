@@ -143,7 +143,11 @@ terminAl/
 ```
 ---
 ## Lizenz
-Siehe `LICENSE` Datei für Details.
+terminAl ist unter der MIT-Lizenz veröffentlicht. Siehe `LICENSE` Datei für Details.
+
+## Dependencies: 
+Dieses Projekt nutzt verschiedene Python-Pakete (siehe `requirements.txt`), die unter ihren jeweiligen Lizenzen stehen. Bei der Nutzung der Dependencies sind deren Lizenzbedingungen zu beachten.
+
 
 ### Verwendete LLM-Modelle
 Dieses Projekt wurde mit Meta Llama-Modellen (Llama 3.1 und Llama 3.2) entwickelt und getestet. Bei der Verwendung von Llama-Modellen gelten die entsprechenden Lizenzbedingungen von Meta:
