@@ -15,13 +15,13 @@ terminal_path = os.getenv("TERMINAL_PATH")
 
 class TerminAlGuard:
     """
-    A wrapper around your DeBERTa classifier that checks
-    the model’s own risk_level prediction against the one
-    returned by Ollama, and prints a warning if they differ.
+    Eine Wrapper-Klasse um den DeBERTa-Klassifizierer, die die eigene
+    Risikoeinschätzung des Modells gegen die von Ollama zurückgegebene
+    überprüft und eine Warnung ausgibt, falls diese voneinander abweichen.
     """
 
     def __init__(self):
-        # load a sync text-classification pipeline
+        # Lade eine synchrone Text-Klassifizierungs-Pipeline
         token = os.getenv("HF_TOKEN")
         if token:
             login(token)
@@ -41,17 +41,17 @@ class TerminAlGuard:
 
     async def check(self, command: str, reported_risk: str):
         """
-        Classify `command`, compare to Ollama’s reported risk (“low”/“medium”/“high”),
-        and print a warning if they don’t match.
+        Klassifiziert den `command`, vergleicht ihn mit Ollamas gemeldeter Risikoeinschätzung
+        ("low"/"medium"/"high") und gibt eine Warnung aus, falls diese nicht übereinstimmen.
         """
         loop = asyncio.get_event_loop()
 
         def _classify():
             out = self.classifier(command)[0]
-            # assumes your model’s label mapping yields exactly "low"/"medium"/"high"
+            # Nimmt an, dass das Modell-Label-Mapping exakt "low"/"medium"/"high" zurückgibt
             return out["label"].lower()
 
-        # run the blocking pipeline in the default executor
+        # Führe die blockierende Pipeline im Standard-Executor aus
         predicted = await loop.run_in_executor(None, _classify)
 
         if predicted != reported_risk.lower():
