@@ -50,8 +50,7 @@ class OllamaClient:
         Returns:
             str: Die Antwort des Modells
         """
-        # Frage nach dem default Model ab
-        settings = json.load(open(terminal_path + "settings/settings.json"))
+
         # Setze Modellname mit Fallback auf Standardmodell
         self.model = self.ollama_settings.get("ollama_model", "llama3.1:8b-instruct-q5_K_M")
         try:
