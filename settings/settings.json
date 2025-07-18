@@ -43,15 +43,6 @@
       "databases": [
         "test"
       ],
-      "mapping_tables_command2": [
-        "psql",
-        "-U",
-        "<username>",
-        "-d",
-        "<database>",
-        "-c",
-        "\\dt"
-      ],
       "mapping_tables_command": [
         "sudo",
         "-u",
