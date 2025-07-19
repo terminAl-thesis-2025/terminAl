@@ -120,6 +120,9 @@ class TerminAl:
                 elif user_input.startswith(r"\search"):
                     # Volltextsuche in ChromaDB durchführen
                     user_input = user_input.split(" ")
+                    if len(user_input) < 2:
+                        print("Keine Suchbegriffe angegeben")
+                        continue
                     await self.chroma_retriever.fulltext_search(user_input[1:], top_k=10)
 
                 elif user_input.startswith(r"\clear"):

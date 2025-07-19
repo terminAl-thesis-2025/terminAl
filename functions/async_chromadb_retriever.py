@@ -129,7 +129,7 @@ class AsyncChromaDBRetriever:
         keywords = [kw.lower() for kw in keywords if kw.strip()]
 
         if not keywords:
-            return "Bitte gib mindestens ein Suchwort an."
+            return ""
 
         # Erstelle den ChromaDB-Client (nicht in __init__, da bei Updates der Client aktualisiert wird)
         client = chromadb.PersistentClient(
