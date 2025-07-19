@@ -120,6 +120,17 @@ class AsyncChromaDBRetriever:
         Returns:
             Formatierter Text mit den gefundenen Dokumenten
         """
+
+        # Konvertiere einzelnes Schlüsselwort zu Liste, wenn nötig
+        if isinstance(keywords, str):
+            keywords = [keywords]
+
+        # Bereinige die Schlüsselwörter: zu Kleinbuchstaben konvertieren und leere entfernen
+        keywords = [kw.lower() for kw in keywords if kw.strip()]
+
+        if not keywords:
+            return "Bitte gib mindestens ein Suchwort an."
+
         # Erstelle den ChromaDB-Client (nicht in __init__, da bei Updates der Client aktualisiert wird)
         client = chromadb.PersistentClient(
             path=terminal_path + self.chroma_settings["chromadb_path"],
@@ -140,16 +151,6 @@ class AsyncChromaDBRetriever:
 
         if not collection:
             return "Keine Verbindung zur Datenbank."
-
-        # Konvertiere einzelnes Schlüsselwort zu Liste, wenn nötig
-        if isinstance(keywords, str):
-            keywords = [keywords]
-
-        # Bereinige die Schlüsselwörter: zu Kleinbuchstaben konvertieren und leere entfernen
-        keywords = [kw.lower() for kw in keywords if kw.strip()]
-
-        if not keywords:
-            return "Bitte gib mindestens ein Suchwort an."
 
         try:
             # Je nach Anzahl der Keywords und Abfrageart unterschiedliche Bedingungen bauen
